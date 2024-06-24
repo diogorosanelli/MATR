@@ -1,0 +1,11 @@
+Unidecode
+numpy
+pandas
+geopandas
+shapely
+folium
+scikit-learn
+openpyxl
+matplotlib
+seaborn
+streamlit
