@@ -323,7 +323,7 @@ class MapUtils:
         - DataFrame: DataFrame original com uma nova coluna 'BAIRRO' indicando o bairro de cada registro.
         """
         # Realizar a junção espacial
-        joinDF = gpd.sjoin(targetDF, referenceDF, how="left", op='intersects')
+        joinDF = gpd.sjoin(targetDF, referenceDF, how="left", predicate='intersects')
         joinDF.drop(columns=['index_right'], inplace=True)
         joinDF.reset_index(drop=True, inplace=True)
         return joinDF
