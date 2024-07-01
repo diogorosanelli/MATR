@@ -24,12 +24,12 @@ from plotly.subplots import make_subplots
 # ================ PARÂMETROS ================
 
 # Paths
-# BASE_PATH = '/mnt/d/PESSOAL/240319-RS-MATR/notebooks' # DEV
-BASE_PATH = '/mount/src/matr/' # PRD
+BASE_PATH = '/mnt/d/PESSOAL/240319-RS-MATR/source'   # DEV
+# BASE_PATH = '/mount/src/matr/'                       # PRD
 DATA_PATH = f'{BASE_PATH}/data'
 
 # Configurações de Mapa
-DISPLAY_MAP = False
+USE_MAP = False
 INITIAL_COORDS = [-51.1794, -29.1678] # Caxias do Sul
 BASEMAPS = [
     'Esri.WorldStreetMap',        # 0 
@@ -100,17 +100,6 @@ COLS_SATISFACAO = [
     'Sentimento de confiança nas pessoas',
     'Satisfação com tratamento de esgoto'
 ]
-
-# Dias da Semana
-DAY_NAME_MAP = {
-    'Monday': 'SEG',
-    'Tuesday': 'TER',
-    'Wednesday': 'QUA',
-    'Thursday': 'QUI',
-    'Friday': 'SEX',
-    'Saturday': 'SAB',
-    'Sunday': 'DOM'
-}
 
 st.set_page_config(layout='wide')
 
@@ -225,11 +214,13 @@ class MapUtils:
             zoom_control=zoomControl, 
             scrollWheelZoom=scrollWheelZoom, 
             dragging=dragging)
+        
         return fmap
 
     @staticmethod
     def addLayer(
         geoDF, 
+        layerName=None,
         styleConfig=None, 
         popupField=None, 
         tooltipField=None):
@@ -238,6 +229,7 @@ class MapUtils:
         
         Parâmetros:
         - geoDF (GeoDataFrame): GeoDataFrame com os dados geoespaciais.
+        - layerName (str): Nome da camada.
         - styleConfig (dict): Configuração de estilo para a camada.
         - popupField (str): Nome da coluna para exibir em popups (opcional).
         - tooltipField (str): Nome da coluna para exibir em tooltips (opcional).
@@ -276,6 +268,8 @@ class MapUtils:
             tooltip = GeoJsonTooltip(fields=[tooltipField])
             geojson_layer.add_child(tooltip)
         
+        geojson_layer.layer_name = layerName
+        
         return geojson_layer
 
     @staticmethod
@@ -290,10 +284,25 @@ class MapUtils:
         Retorna:
         - folium.Map: Objeto de mapa folium com a camada removida.
         """
-        layers_to_remove = [layer for layer in fmap._children if layer == layer_name]
+        layers_to_remove = [layer for layer in fmap._children if layer == layerName]
         for layer in layers_to_remove:
             del fmap._children[layer]
         return fmap
+    
+    @staticmethod
+    def hasLayer(fmap, layerName):
+        """
+        Remove uma camada do mapa folium com base no nome da camada.
+        
+        Parâmetros:
+        - fmap (folium.Map): Objeto de mapa folium.
+        - layerName (str): Nome da camada a ser removida.
+        
+        Retorna:
+        - folium.Map: Objeto de mapa folium com a camada removida.
+        """
+        foundedLayers = [layer for layer in fmap._children if layer.find(layerName) >= 0]
+        return True if len(foundedLayers) > 0 else False
     
     @staticmethod
     def setZoomLevel(fmap, zoomLevel):
@@ -311,7 +320,7 @@ class MapUtils:
         return fmap
 
     @staticmethod
-    def createSpatialJoin(referenceDF, targetDF):
+    def createSpatialJoin(referenceDF, targetDF, spatialRelation='intersects'):
         """
         Atribui bairros aos registros do DataFrame baseado em latitudes e longitudes.
         
@@ -323,12 +332,13 @@ class MapUtils:
         - DataFrame: DataFrame original com uma nova coluna 'BAIRRO' indicando o bairro de cada registro.
         """
         # Realizar a junção espacial
-        joinDF = gpd.sjoin(targetDF, referenceDF, how="left", predicate='intersects')
+        joinDF = gpd.sjoin(targetDF, referenceDF, how="left", predicate=spatialRelation)
         joinDF.drop(columns=['index_right'], inplace=True)
         joinDF.reset_index(drop=True, inplace=True)
         return joinDF
 
 class ChartUtils:
+    @staticmethod
     def createGauge(title, value=50, min=0, max=100, 
                     chartColor="orange", shadownColor="yellow", theme='light'):
         fig = go.Figure(go.Indicator(
@@ -362,6 +372,7 @@ class ChartUtils:
         
         return fig
 
+    @staticmethod
     def getGaugeIndicatorColors(currentValue, cutoff25, cutoff75):
         # Determinando as Cores dos Gráficos
         colorGreen  = {"title":"Normal",  "color": "#4FBA74", "shadown": "#3FA261"}
@@ -379,6 +390,7 @@ class ChartUtils:
             
         return chartColor, chartShadown
     
+    @staticmethod
     def createRadar(title,
                     dataframe, 
                     fieldClasses, 
@@ -423,12 +435,25 @@ class ChartUtils:
         
         return fig
 
-def checkDayPeriod(hora):
+class Utils:
+  DAY_NAME_MAP = {
+    'Monday': 'SEG',
+    'Tuesday': 'TER',
+    'Wednesday': 'QUA',
+    'Thursday': 'QUI',
+    'Friday': 'SEX',
+    'Saturday': 'SAB',
+    'Sunday': 'DOM'
+  }
+  
+  @staticmethod
+  def checkDayPeriod(hora):
     if 5 <= hora < 12: return 'Manhã'
     elif 12 <= hora < 18: return 'Tarde'
     else: return 'Noite'
 
-def classifyCrime(row):
+  @staticmethod
+  def classifyCrime(row):
     if row['Tipo Fato'] == 'Tentado' and 'HOMICIDIO' in row['Desc Fato']:
         return 'Tentativa de Homicídio'
     elif row['Tipo Fato'] == 'Tentado' and 'ROUBO' in row['Desc Fato']:
@@ -439,7 +464,7 @@ def classifyCrime(row):
         return 'Roubo'
     else:
         return 'Outros'
-
+    
 # ================ MAIN ================
 
 DF_BAIRROS = DataLoader.loadSHP(DATA_PATH, 'RS_CAXIASDOSUL_BAIRROS')
@@ -493,18 +518,21 @@ DF_AMV_BAIRRO = DF_AMV_BAIRRO.dropna(subset=['bairro'])
 # Renomeando coluna de BAIRRO utilizada para busca
 DF_AMV_BAIRRO.rename(columns={'bairro': 'BAIRRO'}, inplace=True)
 
+# Eliinnado valores inválidos
+DF_AMV_BAIRRO = DF_AMV_BAIRRO[DF_AMV_BAIRRO['BAIRRO'] != 'NAN']
+
 # Determinar formato do campo data
 DF_AMV_BAIRRO['data'] = pd.to_datetime(DF_AMV_BAIRRO['data'])
 DF_AMV_BAIRRO['day_name'] = DF_AMV_BAIRRO['data'].dt.day_name()
 
 # Criar campos de período, data, hora e dia da semana
-DF_AMV_BAIRRO['F_PERIODO'] = DF_AMV_BAIRRO['data'].dt.hour.apply(checkDayPeriod)
+DF_AMV_BAIRRO['F_PERIODO'] = DF_AMV_BAIRRO['data'].dt.hour.apply(Utils.checkDayPeriod)
 DF_AMV_BAIRRO['F_HORA'] = DF_AMV_BAIRRO['data'].dt.strftime('%H').astype(int)
 DF_AMV_BAIRRO['F_MINUTO'] = DF_AMV_BAIRRO['data'].dt.strftime('%M').astype(int)
 DF_AMV_BAIRRO['F_DIA'] = DF_AMV_BAIRRO['data'].dt.strftime('%d').astype(int)
 DF_AMV_BAIRRO['F_MES'] = DF_AMV_BAIRRO['data'].dt.strftime('%m').astype(int)
 DF_AMV_BAIRRO['F_ANO'] = DF_AMV_BAIRRO['data'].dt.strftime('%Y').astype(int)
-DF_AMV_BAIRRO['F_DIA_SEMANA'] = DF_AMV_BAIRRO['day_name'].map(DAY_NAME_MAP)
+DF_AMV_BAIRRO['F_DIA_SEMANA'] = DF_AMV_BAIRRO['day_name'].map(Utils.DAY_NAME_MAP)
 
 # Apagar campos de processamento temporários
 DF_AMV_BAIRRO.drop(columns=['day_name'], inplace=True)
@@ -521,16 +549,16 @@ DF_SEGURANCA['data'] = pd.to_datetime(DF_SEGURANCA['datafato'] + ' ' + DF_SEGURA
 DF_SEGURANCA['day_name'] = DF_SEGURANCA['data'].dt.day_name()
 
 # Criar campos de período, data, e hora
-DF_SEGURANCA['F_PERIODO'] = DF_AMV_BAIRRO['data'].dt.hour.apply(checkDayPeriod)
+DF_SEGURANCA['F_PERIODO'] = DF_AMV_BAIRRO['data'].dt.hour.apply(Utils.checkDayPeriod)
 DF_SEGURANCA['F_HORA'] = DF_AMV_BAIRRO['data'].dt.strftime('%H').astype(int)
 DF_SEGURANCA['F_MINUTO'] = DF_SEGURANCA['data'].dt.strftime('%M').astype(int)
 DF_SEGURANCA['F_DIA'] = DF_SEGURANCA['data'].dt.strftime('%d').astype(int)
 DF_SEGURANCA['F_MES'] = DF_SEGURANCA['data'].dt.strftime('%m').astype(int)
 DF_SEGURANCA['F_ANO'] = DF_SEGURANCA['data'].dt.strftime('%Y').astype(int)
-DF_SEGURANCA['F_DIA_SEMANA'] = DF_SEGURANCA['day_name'].map(DAY_NAME_MAP)
+DF_SEGURANCA['F_DIA_SEMANA'] = DF_SEGURANCA['day_name'].map(Utils.DAY_NAME_MAP)
 
 # Criar campo de classificação do crime
-DF_SEGURANCA['F_CLASSIFICACAO'] = DF_SEGURANCA.apply(classifyCrime, axis=1)
+DF_SEGURANCA['F_CLASSIFICACAO'] = DF_SEGURANCA.apply(Utils.classifyCrime, axis=1)
 
 # Apagar campos de processamento temporários
 DF_SEGURANCA.drop(columns=['day_name','datafato','horafato'], inplace=True)
@@ -557,64 +585,152 @@ DF_SATISFACAO_STATS = DF_SATISFACAO.groupby('BAIRRO').agg({
   'Satisfação com tratamento de esgoto': 'mean'
 })
 
-# Configurando Filtros
-FILTROS = {
-  'BAIRRO': DF_AMV_BAIRRO['BAIRRO'].unique(),
-  'PERÍODO': DF_AMV_BAIRRO['F_PERIODO'].unique(),
-  'HORA': DF_AMV_BAIRRO['F_HORA'].unique(),
-  'MINUTO': DF_AMV_BAIRRO['F_MINUTO'].unique(),
-  'DIA': DF_AMV_BAIRRO['F_DIA'].unique(),
-  'MÊS': DF_AMV_BAIRRO['F_MES'].unique(),
-  'ANO': DF_AMV_BAIRRO['F_ANO'].unique(),
-  'DIA DA SEMANA': DF_AMV_BAIRRO['F_DIA_SEMANA'].unique(),
-}
+# DASHBOARD
 
 with st.container():
-        st.markdown(
-            """
-            <style>
-            .header-bar {
-                background-color: #222222;
-                padding: 10px;
-                color: white;
-                text-align: center;
-                font-size: 24px;
-                font-weight: bold;
-                margin-bottom: 15px;
-            }
-            </style>
-            <div class="header-bar">
-                Monitoramento Ambiental em Tempo Real
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+    st.markdown(
+        """
+        <style>
+        .header-bar {
+            background-color: #222222;
+            padding: 10px;
+            color: white;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        </style>
+        <div class="header-bar">
+            Monitoramento Ambiental em Tempo Real
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
-# FILTROS
-FILTRO_BAIRRO = st.sidebar.multiselect('Bairro(s)', options=FILTROS['BAIRRO'], placeholder="Escolha uma opção")
-FILTRO_PERIODO = st.sidebar.multiselect('Período(s)', options=FILTROS['PERÍODO'], placeholder="Escolha uma opção")
-FILTRO_DIA_SEMANA = st.sidebar.multiselect('Dia(s) da Semana', options=FILTROS['DIA DA SEMANA'], placeholder="Escolha uma opção")
+DF_AMV_FILTERED = DF_AMV_BAIRRO.copy()
 
-# DATA E HORA (DE)
-with st.sidebar.container():
-    st.write("### Data e Hora (DE)")
-    FILTRO_DIA_DE = st.sidebar.slider(key='DIA_DE', label='Dia', min_value=1, max_value=31, value=1)
-    FILTRO_MES_DE = st.sidebar.slider(key='MES_DE', label='Mês', min_value=1, max_value=12, value=1)
-    FILTRO_ANO_DE = st.sidebar.slider(key='ANO_DE', label='Ano', min_value=2023, max_value=2024, value=2023)
-    FILTRO_HORA_DE = st.sidebar.slider(key='HORA_DE', label='Hora', min_value=0, max_value=23, value=0)
-    FILTRO_MINUTO_DE = st.sidebar.slider(key='MIN_DE', label='Minuto', min_value=0, max_value=59, value=0)
+FILTROS = {
+  'BAIRRO': list(DF_AMV_FILTERED['BAIRRO'].unique()),
+  'PERÍODO': list(DF_AMV_FILTERED['F_PERIODO'].unique()),
+  'DIA DA SEMANA': list(DF_AMV_FILTERED['F_DIA_SEMANA'].unique()),
+  'DIA': list(DF_AMV_FILTERED['F_DIA'].unique()),
+  'MES': list(DF_AMV_FILTERED['F_MES'].unique()),
+  'ANO': list(DF_AMV_FILTERED['F_ANO'].unique()),
+  'HORA': list(DF_AMV_FILTERED['F_HORA'].unique()),
+  'MINUTO': list(DF_AMV_FILTERED['F_MINUTO'].unique()),
+}
 
-# DATA E HORA (ATÉ)
-with st.sidebar.container():
-    st.write("### Data e Hora (ATÉ)")
-    FILTRO_DIA_ATE = st.sidebar.slider(key='DIA_ATE', label='Dia', min_value=1, max_value=31, value=1)
-    FILTRO_MES_ATE = st.sidebar.slider(key='MES_ATE', label='Mês', min_value=1, max_value=12, value=1)
-    FILTRO_ANO_ATE = st.sidebar.slider(key='ANO_ATE', label='Ano', min_value=2023, max_value=2024, value=2023)
-    FILTRO_HORA_ATE = st.sidebar.slider(key='HORA_ATE', label='Hora', min_value=0, max_value=23, value=0)
-    FILTRO_MINUTO_ATE = st.sidebar.slider(key='MIN_ATE', label='Minuto', min_value=0, max_value=59, value=0)
+st.caption(body="<div style='text-align:center;font-weight:bold;font-size:14pt;color:#FFF;padding:10px;'>FILTROS<div>", unsafe_allow_html=True)
+
+chartsFilterCols = st.columns(2)
+with chartsFilterCols[0]:
+    FILTRO_BAIRRO = st.multiselect(label='Bairro(s)', options=FILTROS['BAIRRO'], placeholder="Escolha uma opção",)
+
+with chartsFilterCols[1]:
+    daysFilterCols = st.columns(2)
+    with daysFilterCols[0]:
+        FILTRO_PERIODO = st.multiselect('Período(s)', options=FILTROS['PERÍODO'], placeholder="Escolha uma opção")    
+    with daysFilterCols[1]:
+        FILTRO_DIA_SEMANA = st.multiselect('Dia(s) da Semana', options=FILTROS['DIA DA SEMANA'], placeholder="Escolha uma opção")
+
+datesFilterCols = st.columns(2)
+with datesFilterCols[0]:
+    st.caption(body="<div style='text-align:center;font-weight:bold;font-size:12pt;color:#FFF;padding:5px;'>DATA E HORA INICIAL<div>", unsafe_allow_html=True)
+    
+    datesFromCols = st.columns(3)
+    with datesFromCols[0]:
+        FILTRO_DIA_DE = st.number_input(
+            key='DIA_DE', 
+            label='Dia', 
+            min_value=1, max_value=31, 
+            value=np.array(FILTROS['DIA']).min())
+    with datesFromCols[1]:
+        FILTRO_MES_DE = st.number_input(
+            key='MES_DE', 
+            label='Mês', 
+            min_value=1, max_value=12, 
+            value=np.array(FILTROS['MES']).min())
+    with datesFromCols[2]:
+        FILTRO_ANO_DE = st.number_input(
+            key='ANO_DE', 
+            label='Ano', 
+            min_value=2023, max_value=2024, 
+            value=np.array(FILTROS['ANO']).min())
+    
+    timeFromCols = st.columns(2)
+    with timeFromCols[0]:
+        FILTRO_HORA_DE = st.number_input(
+            key='HORA_DE', 
+            label='Hora', 
+            min_value=0, max_value=23, 
+            value=np.array(FILTROS['HORA']).min())
+    with timeFromCols[1]:
+        FILTRO_MINUTO_DE = st.number_input(
+            key='MIN_DE', 
+            label='Minuto', 
+            min_value=0, max_value=59, 
+            value=np.array(FILTROS['MINUTO']).min())
+
+with datesFilterCols[1]:
+    st.caption(body="<div style='text-align:center;font-weight:bold;font-size:12pt;color:#FFF;padding:5px;'>DATA E HORA FINAL<div>", unsafe_allow_html=True)
+    
+    datesFromCols = st.columns(3)
+    with datesFromCols[0]:
+        FILTRO_DIA_ATE = st.number_input(
+            key='DIA_ATE', 
+            label='Dia', 
+            min_value=1, max_value=31, 
+            value=np.array(FILTROS['DIA']).max())
+    with datesFromCols[1]:
+        FILTRO_MES_ATE = st.number_input(
+            key='MES_ATE', 
+            label='Mês', 
+            min_value=1, max_value=12, 
+            value=np.array(FILTROS['MES']).max())
+    with datesFromCols[2]:
+        FILTRO_ANO_ATE = st.number_input(
+            key='ANO_ATE', 
+            label='Ano', 
+            min_value=2023, max_value=2024, 
+            value=np.array(FILTROS['ANO']).max())
+    
+    timeFromCols = st.columns(2)
+    with timeFromCols[0]:
+        FILTRO_HORA_ATE = st.number_input(
+            key='HORA_ATE', 
+            label='Hora', 
+            min_value=0, max_value=23, 
+            value=np.array(FILTROS['HORA']).max())
+    with timeFromCols[1]:
+        FILTRO_MINUTO_ATE = st.number_input(
+            key='MIN_ATE', 
+            label='Minuto', 
+            min_value=0, max_value=59, 
+            value=np.array(FILTROS['MINUTO']).max())
 
 # APLICANDO FILTRO
-DF_AMV_FILTERED = DF_AMV_BAIRRO[DF_AMV_BAIRRO['BAIRRO'].isin(FILTRO_BAIRRO)]
+if FILTRO_BAIRRO != []:
+    DF_AMV_FILTERED = DF_AMV_FILTERED[DF_AMV_FILTERED['BAIRRO'].isin(FILTRO_BAIRRO)]
+if FILTRO_PERIODO != []:
+    DF_AMV_FILTERED = DF_AMV_FILTERED[DF_AMV_FILTERED['F_PERIODO'].isin(FILTRO_PERIODO)]
+if FILTRO_DIA_SEMANA != []:
+    DF_AMV_FILTERED = DF_AMV_FILTERED[DF_AMV_FILTERED['F_DIA_SEMANA'].isin(FILTRO_DIA_SEMANA)]
+
+DF_AMV_FILTERED = DF_AMV_FILTERED[
+    # DATA / HORA DE
+    (DF_AMV_FILTERED['F_DIA'] >= FILTRO_DIA_DE) &
+    (DF_AMV_FILTERED['F_MES'] >= FILTRO_MES_DE) &
+    (DF_AMV_FILTERED['F_ANO'] >= FILTRO_ANO_DE) &
+    (DF_AMV_FILTERED['F_HORA'] >= FILTRO_HORA_DE) &
+    (DF_AMV_FILTERED['F_MINUTO'] >= FILTRO_MINUTO_DE) &
+    # DATA / HORA ATÉ
+    (DF_AMV_FILTERED['F_DIA'] <= FILTRO_DIA_ATE) &
+    (DF_AMV_FILTERED['F_MES'] <= FILTRO_MES_ATE) &
+    (DF_AMV_FILTERED['F_ANO'] <= FILTRO_ANO_ATE) &
+    (DF_AMV_FILTERED['F_HORA'] <= FILTRO_HORA_ATE) &
+    (DF_AMV_FILTERED['F_MINUTO'] <= FILTRO_MINUTO_ATE)
+]
 
 # TEMPERATURA
 TEMPERATURE_MIN = DF_AMV_FILTERED['temperatura'].min()
@@ -657,6 +773,8 @@ TVOC_MAX = DF_AMV_FILTERED['etvoc'].max()
 TVOC_MEAN = DF_AMV_FILTERED['etvoc'].mean()
 TVOC_CUTOFF_25 = TVOC_MIN + 0.25 * (TVOC_MAX - TVOC_MIN)
 TVOC_CUTOFF_75 = TVOC_MIN + 0.75 * (TVOC_MAX - TVOC_MIN)
+
+st.caption(body="<div style='text-align:center;font-weight:bold;font-size:14pt;color:#FFF;padding:10px;'>GRÁFICOS DE INDICADORES<div>", unsafe_allow_html=True)
 
 indicatorCharts = []
 
@@ -762,32 +880,6 @@ chartTVOC = ChartUtils.createGauge(
 )
 indicatorCharts.append(chartTVOC)
 
-# Criar subplots
-# fig = make_subplots(
-#     rows=2, cols=3,
-#     specs=[
-#         [{"type": "indicator"}, {"type": "indicator"}, {"type": "indicator"}],
-#         [{"type": "indicator"}, {"type": "indicator"}, {"type": "indicator"}],
-#     ]
-# )
-
-# Adicionar gráficos aos subplots
-# for i, chart in enumerate(indicatorCharts):
-#     row = i // 3 + 1
-#     col = i % 3 + 1
-#     fig.add_trace(chart.data[0], row=row, col=col)
-
-# Atualizar layout
-# fig.update_layout(
-#     font={'color': "white"},
-#     paper_bgcolor="black",
-#     plot_bgcolor="black",
-#     height=900, 
-#     showlegend=False)
-
-# Mostrar gráfico
-# st.plotly_chart(fig)
-
 chartCols = st.columns(3)
 chartCols[0].plotly_chart(chartTemperature, use_container_width=True)
 chartCols[1].plotly_chart(chartUmidade, use_container_width=True)
@@ -799,14 +891,24 @@ chartCols[1].plotly_chart(chartCO2, use_container_width=True)
 chartCols[2].plotly_chart(chartTVOC, use_container_width=True)
 
 DF_TABLE = DF_AMV_FILTERED[[
-    'id',
-    'data',
-    'temperatura', 'umidade', 'luminosidade',
-    'ruido', 'eco2', 'etvoc',
     'BAIRRO', 
-    'F_PERIODO', 'F_HORA', 'F_MINUTO', 
-    'F_DIA', 'F_MES', 'F_ANO', 'F_DIA_SEMANA'
+    'data',
+    'temperatura', 'umidade', 'luminosidade', 'ruido', 'eco2', 'etvoc',
+    # 'F_PERIODO', 'F_HORA', 'F_MINUTO', 'F_DIA', 'F_MES', 'F_ANO', 'F_DIA_SEMANA'
 ]]
+
+DF_TABLE.rename(
+    columns={
+        'data': 'DATA',
+        'temperatura': 'TEMPERATURA', 
+        'umidade': 'UMIDADE', 
+        'luminosidade': 'LUMINOSIDADE',
+        'ruido': 'RUÍDO', 
+        'eco2': 'CO₂', 
+        'etvoc': 'ETVOC',
+    },
+    inplace=True
+)
 
 st.dataframe(
     data=DF_TABLE, 
@@ -814,29 +916,49 @@ st.dataframe(
     hide_index=True,
     selection_mode="single-row")
 
-COLS_MONITORAMENTO_GROUP = ['BAIRRO']
+# ====================== GRÁFICO RADAR ======================
 
-# Interpolando valores das colunas de indicadores
-COLS_MONITORAMENTO_RADAR = [
-    'TEMPERATURA', 
-    'UMIDADE', 
-    'LUMINOSIDADE', 
-    'RUIDO', 
-    'CO2', 
-    'ETVOC'
-]
+with st.container():
+    st.markdown(
+        """
+        <style>
+        .title-radar {
+            background-color: #222222;
+            padding: 5px;
+            color: #FFFFFF;
+            text-align: center;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        </style>
+        <div class="title-radar">COMPARATIVO DE INDICADORES</div>
+        """,
+        unsafe_allow_html=True
+    )
 
-COLS_MONITORAMENTO_N = [
-    'N_TEMPERATURA', 
-    'N_UMIDADE', 
-    'N_LUMINOSIDADE', 
-    'N_RUIDO', 
-    'N_CO2', 
-    'N_ETVOC'
-]
+COLS_GROUP_RADAR = ['BAIRRO']
+COLS_VALUE_RADAR = ['TEMPERATURA', 'UMIDADE', 'LUMINOSIDADE', 'RUIDO', 'CO2', 'ETVOC']
+
+radarPropsCols = st.columns(2)
+with radarPropsCols[0]:
+    PROPS_GROUP_RADAR = st.selectbox(
+        label='Grupo', 
+        options=COLS_GROUP_RADAR, 
+        placeholder="Selecione a propriedade de grupo",
+        index=0
+    )
+
+with radarPropsCols[1]:
+    PROPS_VALUE_RADAR = st.multiselect(
+        label='Variáveis', 
+        options=COLS_VALUE_RADAR, 
+        placeholder="Selecione as variáveis",
+        default=['TEMPERATURA', 'UMIDADE', 'LUMINOSIDADE', 'RUIDO', 'CO2', 'ETVOC']
+    )
 
 DF_AMV_RADAR = DF_AMV_FILTERED[[
-    'BAIRRO',
+    'BAIRRO',   
     'temperatura',
     'umidade',
     'luminosidade',
@@ -856,42 +978,25 @@ DF_AMV_RADAR.rename(
   inplace=True
 )
 
-DF_AMV_RADAR[f'{COLS_MONITORAMENTO_N[0]}'] = DF_AMV_RADAR[f'{COLS_MONITORAMENTO_RADAR[0]}']
-DF_AMV_RADAR[f'{COLS_MONITORAMENTO_N[1]}'] = DF_AMV_RADAR[f'{COLS_MONITORAMENTO_RADAR[1]}']
-DF_AMV_RADAR[f'{COLS_MONITORAMENTO_N[2]}'] = DF_AMV_RADAR[f'{COLS_MONITORAMENTO_RADAR[2]}']
-DF_AMV_RADAR[f'{COLS_MONITORAMENTO_N[3]}'] = DF_AMV_RADAR[f'{COLS_MONITORAMENTO_RADAR[3]}']
-DF_AMV_RADAR[f'{COLS_MONITORAMENTO_N[4]}'] = DF_AMV_RADAR[f'{COLS_MONITORAMENTO_RADAR[4]}']
-DF_AMV_RADAR[f'{COLS_MONITORAMENTO_N[5]}'] = DF_AMV_RADAR[f'{COLS_MONITORAMENTO_RADAR[5]}']
+COLS_V = []
+COLS_N = []
+if(DF_AMV_RADAR.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR != []):
+    for fieldName in PROPS_VALUE_RADAR:
+        DF_AMV_RADAR[f'N_{fieldName}'] = DF_AMV_RADAR[f'{fieldName}']
+        COLS_N.append(f'N_{fieldName}')
+        COLS_V.append(f'{fieldName}')
 
-if(DF_AMV_RADAR.empty == False):
-    scaler = MinMaxScaler()
-    DF_AMV_RADAR[COLS_MONITORAMENTO_N] = scaler.fit_transform(DF_AMV_RADAR[COLS_MONITORAMENTO_N])
+    scaler = MinMaxScaler()    
+    DF_AMV_RADAR[COLS_N] = scaler.fit_transform(DF_AMV_RADAR[COLS_V])
 
-DF_AMV_RADAR_PLOT = DF_AMV_RADAR.groupby(COLS_MONITORAMENTO_GROUP).mean()
-
-DF_AMV_RADAR_PLOT.drop(
-    columns=['TEMPERATURA','UMIDADE', 'LUMINOSIDADE', 'RUIDO', 'CO2', 'ETVOC'], 
-    axis='columns', 
-    inplace=True
-)
-
-DF_AMV_RADAR_PLOT.rename(
-columns={
-    'N_TEMPERATURA': 'TEMPERATURA', 
-    'N_UMIDADE': 'UMIDADE', 
-    'N_LUMINOSIDADE': 'LUMINOSIDADE', 
-    'N_RUIDO': 'RUIDO', 
-    'N_CO2': 'CO2', 
-    'N_ETVOC': 'ETVOC'},
-inplace=True
-)
-
+DF_AMV_RADAR_PLOT = DF_AMV_RADAR[[PROPS_GROUP_RADAR] + COLS_N].groupby(PROPS_GROUP_RADAR).mean()
+DF_AMV_RADAR_PLOT.rename(columns=lambda x: x[2:] if ('N_' in x) else x, inplace=True)
 DF_AMV_RADAR_PLOT.reset_index(inplace=True)
 
 chartMonitoramentoBairro = ChartUtils.createRadar(
-    title='INDICADORES POR BAIRRO',
+    title=f'INDICADORES POR {PROPS_GROUP_RADAR}',
     dataframe=DF_AMV_RADAR_PLOT,
-    fieldClasses='BAIRRO',
+    fieldClasses=PROPS_GROUP_RADAR,
     colors=px.colors.sequential.Jet_r,
     theme='dark',
 )
@@ -899,9 +1004,12 @@ chartMonitoramentoBairro = ChartUtils.createRadar(
 chartCols = st.columns(1)
 chartCols[0].plotly_chart(chartMonitoramentoBairro, use_container_width=True)
 
-# Tabela Correspondente ao Gráfico de RADAR
-st.dataframe(
-    data=DF_AMV_RADAR_PLOT, 
-    use_container_width=True, 
-    hide_index=True,
-    selection_mode="single-row")
+# ====================== TABELA GRÁFICO RADAR ======================
+if(DF_AMV_RADAR.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR != []):
+    DF_RADAR_TABLE = DF_AMV_RADAR[[PROPS_GROUP_RADAR] + COLS_V].groupby(PROPS_GROUP_RADAR).mean()
+    DF_RADAR_TABLE.reset_index(inplace=True)
+    st.dataframe(
+        data=DF_RADAR_TABLE, 
+        use_container_width=True, 
+        hide_index=True,
+        selection_mode="single-row")
