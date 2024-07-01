@@ -24,8 +24,8 @@ from plotly.subplots import make_subplots
 # ================ PARÂMETROS ================
 
 # Paths
-BASE_PATH = '/mnt/d/PESSOAL/240319-RS-MATR/source'   # DEV
-# BASE_PATH = '/mount/src/matr/'                       # PRD
+# BASE_PATH = '/mnt/d/PESSOAL/240319-RS-MATR/source'   # DEV
+BASE_PATH = '/mount/src/matr/'                       # PRD
 DATA_PATH = f'{BASE_PATH}/data'
 
 # Configurações de Mapa
@@ -104,6 +104,7 @@ COLS_SATISFACAO = [
 st.set_page_config(layout='wide')
 
 # ================ CLASSES DE NEGÓCIO ================
+
 class DataLoader:
     @staticmethod
     @st.cache_data
@@ -467,6 +468,7 @@ class Utils:
     
 # ================ MAIN ================
 
+# Carregar dados de Bairros
 DF_BAIRROS = DataLoader.loadSHP(DATA_PATH, 'RS_CAXIASDOSUL_BAIRROS')
 DF_BAIRROS.drop(columns=['numerolei', 'link_doc_b', 'observacoe',
                          'OBJECTID', 'bairro', 'FREQUENCY', 
@@ -482,6 +484,13 @@ DF_BAIRROS.drop(columns=['numerolei', 'link_doc_b', 'observacoe',
 
 # Reprojetando camada de bairros
 DF_BAIRROS = DF_BAIRROS.to_crs(crs="EPSG:4326")
+
+# Carregar dados de Setores Censitários
+DF_SETORES = DataLoader.loadSHP(DATA_PATH, 'RS_Malha_Preliminar_2022')
+DF_SETORES = DF_SETORES[DF_SETORES['NM_MUN'] == 'Caxias do Sul']
+
+# Reprojetando camada de setores censitários
+DF_SETORES = DF_SETORES.to_crs(crs="EPSG:4326")
 
 # Carregar dados de Monitoramento
 DF_AMV_01 = DataLoader.loadCSV(DATA_PATH, 'AMV_01', '|')
@@ -503,11 +512,24 @@ DF_AMV = gpd.GeoDataFrame(DF_AMV, geometry=geometry, crs="EPSG:4326")
 # Carregar dados de Segurança Pública
 DF_SEGURANCA = DataLoader.loadXLSX(DATA_PATH, 'SEGURANCA_PUBLICA')
 
-# Carregar dados de Segurança Pública
+# Carregar dados de Satisfação da População
 DF_SATISFACAO = DataLoader.loadXLSX(DATA_PATH, 'SATISFACAO')
 
-DF_AMV_BAIRRO = MapUtils.createSpatialJoin(referenceDF=DF_BAIRROS,targetDF=DF_AMV)
+# Carregar dados de Agregado Setor 2022
+DF_CENSO_2022 = DataLoader.loadCSV(DATA_PATH, 'AGREGADO_SETOR_RS',';')
+DF_CENSO_2022 = DF_CENSO_2022[DF_CENSO_2022['NM_MUN'] == 'Caxias do Sul']
+
+# MONITORAMENTO AMBIENTAL ← BAIRROS
+DF_AMV_BAIRRO = MapUtils.createSpatialJoin(
+  referenceDF=DF_BAIRROS[['geometry','nome']],
+  targetDF=DF_AMV)
 DF_AMV_BAIRRO.rename(columns={'nome':'bairro'}, inplace=True)
+
+# SETOR CENSITÁRIO ← BAIRROS
+DF_SETORES_BAIRROS = MapUtils.createSpatialJoin(
+  referenceDF=DF_BAIRROS[['geometry','nome']],
+  targetDF=DF_SETORES)
+DF_SETORES_BAIRROS.rename(columns={'nome':'bairro'}, inplace=True)
 
 # Padronizando valores da coluna de Bairro
 DF_AMV_BAIRRO['bairro'] = DF_AMV_BAIRRO['bairro'].apply(lambda x: unidecode(str(x)).upper())
