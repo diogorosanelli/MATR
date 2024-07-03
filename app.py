@@ -24,8 +24,8 @@ from plotly.subplots import make_subplots
 # ================ PARÂMETROS ================
 
 # Paths
-BASE_PATH = '/mnt/d/PESSOAL/240319-RS-MATR/source'   # DEV
-# BASE_PATH = '/mount/src/matr/'                       # PRD
+# BASE_PATH = '/mnt/d/PESSOAL/240319-RS-MATR/source'   # DEV
+BASE_PATH = '/mount/src/matr/'                       # PRD
 DATA_PATH = f'{BASE_PATH}/data'
 
 # Configurações de Mapa
