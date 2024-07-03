@@ -24,8 +24,8 @@ from plotly.subplots import make_subplots
 # ================ PARÂMETROS ================
 
 # Paths
-# BASE_PATH = '/mnt/d/PESSOAL/240319-RS-MATR/source'   # DEV
-BASE_PATH = '/mount/src/matr/'                       # PRD
+BASE_PATH = '/mnt/d/PESSOAL/240319-RS-MATR/source'   # DEV
+# BASE_PATH = '/mount/src/matr/'                       # PRD
 DATA_PATH = f'{BASE_PATH}/data'
 
 # Configurações de Mapa
@@ -585,33 +585,54 @@ DF_SEGURANCA['F_CLASSIFICACAO'] = DF_SEGURANCA.apply(Utils.classifyCrime, axis=1
 # Apagar campos de processamento temporários
 DF_SEGURANCA.drop(columns=['day_name','datafato','horafato'], inplace=True)
 
+# Renomeando colunas de ligação
+DF_SEGURANCA.rename(
+  columns={
+    "Municipio": "MUNICIPIO",
+    "Bairro": "BAIRRO",
+  }, 
+  inplace=True
+)
+
+DF_SEGURANCA.reset_index(drop=True, inplace=True)
+
 # Padronizando valores das colunas Bairro
 DF_SATISFACAO['BAIRRO'] = DF_SATISFACAO['BAIRRO'].apply(lambda x: unidecode(str(x)).upper())
 
-DF_SATISFACAO_STATS = DF_SATISFACAO.groupby('BAIRRO').agg({
-  'Qtd respostas': 'sum',
-  'Satisfação com o bairro': 'mean',
-  'Satisfação com a Saúde': 'mean',
-  'Prática de atividade física': 'mean',
-  'Satisfação financeira': 'mean',
-  'Satisfação com atividade comercial': 'mean',
-  'Satisfação com qualidade do ar': 'mean',
-  'Satisfação com ruído': 'mean',
-  'Satisfação com espaços de lazer': 'mean',
-  'Satistação com coleta de lixo': 'mean',
-  'Satisfação com distância da parada de ônibus': 'mean',
-  'Satisfação com qualidade das paradas de ônibus': 'mean',
-  'Satisfação com acesso aos locais importantes da cidade': 'mean',
-  'Sentimento de segurança': 'mean',
-  'Sentimento de confiança nas pessoas': 'mean',
-  'Satisfação com tratamento de esgoto': 'mean'
-})
+# Renomeando colunas de análise
+DF_SATISFACAO.rename(
+  columns={
+    'Qtd respostas': 'QTD_RESP',
+    'Satisfação com o bairro': 'SAT01',
+    'Satisfação com a Saúde': 'SAT02',
+    'Prática de atividade física': 'SAT03',
+    'Satisfação financeira': 'SAT04',
+    'Satisfação com atividade comercial': 'SAT05',
+    'Satisfação com qualidade do ar': 'SAT06',
+    'Satisfação com ruído': 'SAT07',
+    'Satisfação com espaços de lazer': 'SAT08',
+    'Satistação com coleta de lixo': 'SAT09',
+    'Satisfação com distância da parada de ônibus': 'SAT10',
+    'Satisfação com qualidade das paradas de ônibus': 'SAT11',
+    'Satisfação com acesso aos locais importantes da cidade': 'SAT12',
+    'Sentimento de segurança': 'SAT13',
+    'Sentimento de confiança nas pessoas': 'SAT14',
+    'Satisfação com tratamento de esgoto': 'SAT15'
+  },
+  inplace=True
+)
+
+# Setores Censitários
+DF_SETORES_BAIRROS.rename(columns={'bairro': 'BAIRRO'}, inplace=True)
+
+# ==================== UNIFICANDO INFORMAÇÕES ====================
 
 # ==================== DASHBOARD ====================
 DF_AMV_FILTERED = DF_AMV_BAIRRO.copy()
+# DF_SEG_FILTERED = DF_SEGURANCA.copy()
 
 FILTROS = {
-  'BAIRRO': list(DF_AMV_FILTERED['BAIRRO'].unique()),
+  'BAIRRO': list(sorted(DF_AMV_FILTERED['BAIRRO'].unique())),
   'PERÍODO': list(DF_AMV_FILTERED['F_PERIODO'].unique()),
   'DIA DA SEMANA': list(DF_AMV_FILTERED['F_DIA_SEMANA'].unique()),
   'DIA': list(DF_AMV_FILTERED['F_DIA'].unique()),
@@ -730,10 +751,13 @@ with datesFilterCols[1]:
 # APLICANDO FILTRO
 if FILTRO_BAIRRO != []:
     DF_AMV_FILTERED = DF_AMV_FILTERED[DF_AMV_FILTERED['BAIRRO'].isin(FILTRO_BAIRRO)]
+    # DF_SEG_FILTERED = DF_SEG_FILTERED[DF_SEG_FILTERED['BAIRRO'].isin(FILTRO_BAIRRO)]
 if FILTRO_PERIODO != []:
     DF_AMV_FILTERED = DF_AMV_FILTERED[DF_AMV_FILTERED['F_PERIODO'].isin(FILTRO_PERIODO)]
+    # DF_SEG_FILTERED = DF_SEG_FILTERED[DF_SEG_FILTERED['F_PERIODO'].isin(FILTRO_PERIODO)]
 if FILTRO_DIA_SEMANA != []:
     DF_AMV_FILTERED = DF_AMV_FILTERED[DF_AMV_FILTERED['F_DIA_SEMANA'].isin(FILTRO_DIA_SEMANA)]
+    # DF_SEG_FILTERED = DF_SEG_FILTERED[DF_SEG_FILTERED['F_DIA_SEMANA'].isin(FILTRO_DIA_SEMANA)]
 
 DF_AMV_FILTERED = DF_AMV_FILTERED[
     # DATA / HORA DE
@@ -750,45 +774,99 @@ DF_AMV_FILTERED = DF_AMV_FILTERED[
     (DF_AMV_FILTERED['F_MINUTO'] <= FILTRO_MINUTO_ATE)
 ]
 
+# DF_SEG_FILTERED = DF_SEG_FILTERED[
+#     # DATA / HORA DE
+#     (DF_SEG_FILTERED['F_DIA'] >= FILTRO_DIA_DE) &
+#     (DF_SEG_FILTERED['F_MES'] >= FILTRO_MES_DE) &
+#     (DF_SEG_FILTERED['F_ANO'] >= FILTRO_ANO_DE) &
+#     (DF_SEG_FILTERED['F_HORA'] >= FILTRO_HORA_DE) &
+#     (DF_SEG_FILTERED['F_MINUTO'] >= FILTRO_MINUTO_DE) &
+#     # DATA / HORA ATÉ
+#     (DF_SEG_FILTERED['F_DIA'] <= FILTRO_DIA_ATE) &
+#     (DF_SEG_FILTERED['F_MES'] <= FILTRO_MES_ATE) &
+#     (DF_SEG_FILTERED['F_ANO'] <= FILTRO_ANO_ATE) &
+#     (DF_SEG_FILTERED['F_HORA'] <= FILTRO_HORA_ATE) &
+#     (DF_SEG_FILTERED['F_MINUTO'] <= FILTRO_MINUTO_ATE)
+# ]
+
+# UNIFICANDO DADOS
+DF_SEGURANCA_GRP = DF_SEGURANCA.groupby(['BAIRRO']).size().reset_index(name='NRO_CRIMES')
+
+DF_SATISFACAO_GRP = DF_SATISFACAO.groupby(['BAIRRO']).agg({
+  'QTD_RESP': 'sum',
+  'SAT01': 'sum',
+  'SAT02': 'sum',
+  'SAT03': 'sum',
+  'SAT04': 'sum',
+  'SAT05': 'sum',
+  'SAT06': 'sum',
+  'SAT07': 'sum',
+  'SAT08': 'sum',
+  'SAT09': 'sum',
+  'SAT10': 'sum',
+  'SAT11': 'sum',
+  'SAT12': 'sum',
+  'SAT13': 'sum',
+  'SAT14': 'sum',
+  'SAT15': 'sum',
+}).reset_index()
+DF_SATISFACAO_GRP.head(5)
+
+DF_SETORES_GRP = DF_SETORES_BAIRROS.groupby(['BAIRRO']).agg({
+  'v0001': 'sum',
+  'v0002': 'sum',
+  'v0003': 'sum',
+  'v0004': 'sum',
+  'v0005': 'sum',
+  'v0006': 'sum',
+  'v0007': 'sum',
+}).reset_index()
+DF_SETORES_GRP.head(5)
+
+DF_DATA = DF_AMV_FILTERED.copy()
+DF_DATA = DF_DATA.merge(DF_SEGURANCA_GRP, how='left', left_on='BAIRRO', right_on='BAIRRO')
+DF_DATA = DF_DATA.merge(DF_SATISFACAO_GRP, how='left', left_on='BAIRRO', right_on='BAIRRO')
+DF_DATA = DF_DATA.merge(DF_SETORES_GRP, how='left', left_on='BAIRRO', right_on='BAIRRO')
+
 # TEMPERATURA
-TEMPERATURE_MIN = DF_AMV_FILTERED['temperatura'].min() if (FILTRO_BAIRRO != []) else 0
-TEMPERATURE_MAX = DF_AMV_FILTERED['temperatura'].max() if (FILTRO_BAIRRO != []) else 1
-TEMPERATURE_MEAN = DF_AMV_FILTERED['temperatura'].mean() if (FILTRO_BAIRRO != []) else 0
+TEMPERATURE_MIN = DF_DATA['temperatura'].min() if (FILTRO_BAIRRO != []) else 0
+TEMPERATURE_MAX = DF_DATA['temperatura'].max() if (FILTRO_BAIRRO != []) else 1
+TEMPERATURE_MEAN = DF_DATA['temperatura'].mean() if (FILTRO_BAIRRO != []) else 0
 TEMPERATURE_CUTOFF_25 = (TEMPERATURE_MIN + 0.25 * (TEMPERATURE_MAX - TEMPERATURE_MIN)) if (FILTRO_BAIRRO != []) else 0.25
 TEMPERATURE_CUTOFF_75 = (TEMPERATURE_MIN + 0.75 * (TEMPERATURE_MAX - TEMPERATURE_MIN)) if (FILTRO_BAIRRO != []) else 0.75
 
 # UMIDADE
-UMIDADE_MIN = DF_AMV_FILTERED['umidade'].min() if (FILTRO_BAIRRO != []) else 0
-UMIDADE_MAX = DF_AMV_FILTERED['umidade'].max() if (FILTRO_BAIRRO != []) else 1
-UMIDADE_MEAN = DF_AMV_FILTERED['umidade'].mean() if (FILTRO_BAIRRO != []) else 0
+UMIDADE_MIN = DF_DATA['umidade'].min() if (FILTRO_BAIRRO != []) else 0
+UMIDADE_MAX = DF_DATA['umidade'].max() if (FILTRO_BAIRRO != []) else 1
+UMIDADE_MEAN = DF_DATA['umidade'].mean() if (FILTRO_BAIRRO != []) else 0
 UMIDADE_CUTOFF_25 = (UMIDADE_MIN + 0.25 * (UMIDADE_MAX - UMIDADE_MIN)) if (FILTRO_BAIRRO != []) else 0.25
 UMIDADE_CUTOFF_75 = (UMIDADE_MIN + 0.75 * (UMIDADE_MAX - UMIDADE_MIN)) if (FILTRO_BAIRRO != []) else 0.75
 
 # LUMINOSIDADE
-LUMINOSIDADE_MIN = DF_AMV_FILTERED['luminosidade'].min() if (FILTRO_BAIRRO != []) else 0
-LUMINOSIDADE_MAX = DF_AMV_FILTERED['luminosidade'].max() if (FILTRO_BAIRRO != []) else 1
-LUMINOSIDADE_MEAN = DF_AMV_FILTERED['luminosidade'].mean() if (FILTRO_BAIRRO != []) else 0
+LUMINOSIDADE_MIN = DF_DATA['luminosidade'].min() if (FILTRO_BAIRRO != []) else 0
+LUMINOSIDADE_MAX = DF_DATA['luminosidade'].max() if (FILTRO_BAIRRO != []) else 1
+LUMINOSIDADE_MEAN = DF_DATA['luminosidade'].mean() if (FILTRO_BAIRRO != []) else 0
 LUMINOSIDADE_CUTOFF_25 = (LUMINOSIDADE_MIN + 0.25 * (LUMINOSIDADE_MAX - LUMINOSIDADE_MIN)) if (FILTRO_BAIRRO != []) else 0.25
 LUMINOSIDADE_CUTOFF_75 = (LUMINOSIDADE_MIN + 0.75 * (LUMINOSIDADE_MAX - LUMINOSIDADE_MIN)) if (FILTRO_BAIRRO != []) else 0.75
 
 # RUÍDO
-RUIDO_MIN = DF_AMV_FILTERED['ruido'].min() if (FILTRO_BAIRRO != []) else 0
-RUIDO_MAX = DF_AMV_FILTERED['ruido'].max() if (FILTRO_BAIRRO != []) else 1
-RUIDO_MEAN = DF_AMV_FILTERED['ruido'].mean() if (FILTRO_BAIRRO != []) else 0
+RUIDO_MIN = DF_DATA['ruido'].min() if (FILTRO_BAIRRO != []) else 0
+RUIDO_MAX = DF_DATA['ruido'].max() if (FILTRO_BAIRRO != []) else 1
+RUIDO_MEAN = DF_DATA['ruido'].mean() if (FILTRO_BAIRRO != []) else 0
 RUIDO_CUTOFF_25 = (RUIDO_MIN + 0.25 * (RUIDO_MAX - RUIDO_MIN)) if (FILTRO_BAIRRO != []) else 0.25
 RUIDO_CUTOFF_75 = (RUIDO_MIN + 0.75 * (RUIDO_MAX - RUIDO_MIN)) if (FILTRO_BAIRRO != []) else 0.75
 
 # CO2
-CO2_MIN = DF_AMV_FILTERED['eco2'].min() if (FILTRO_BAIRRO != []) else 0
-CO2_MAX = DF_AMV_FILTERED['eco2'].max() if (FILTRO_BAIRRO != []) else 1
-CO2_MEAN = DF_AMV_FILTERED['eco2'].mean() if (FILTRO_BAIRRO != []) else 0
+CO2_MIN = DF_DATA['eco2'].min() if (FILTRO_BAIRRO != []) else 0
+CO2_MAX = DF_DATA['eco2'].max() if (FILTRO_BAIRRO != []) else 1
+CO2_MEAN = DF_DATA['eco2'].mean() if (FILTRO_BAIRRO != []) else 0
 CO2_CUTOFF_25 = (CO2_MIN + 0.25 * (CO2_MAX - CO2_MIN)) if (FILTRO_BAIRRO != []) else 0.25
 CO2_CUTOFF_75 = (CO2_MIN + 0.75 * (CO2_MAX - CO2_MIN)) if (FILTRO_BAIRRO != []) else 0.75
 
 # TVOC
-TVOC_MIN = DF_AMV_FILTERED['etvoc'].min() if (FILTRO_BAIRRO != []) else 0
-TVOC_MAX = DF_AMV_FILTERED['etvoc'].max() if (FILTRO_BAIRRO != []) else 1
-TVOC_MEAN = DF_AMV_FILTERED['etvoc'].mean() if (FILTRO_BAIRRO != []) else 0
+TVOC_MIN = DF_DATA['etvoc'].min() if (FILTRO_BAIRRO != []) else 0
+TVOC_MAX = DF_DATA['etvoc'].max() if (FILTRO_BAIRRO != []) else 1
+TVOC_MEAN = DF_DATA['etvoc'].mean() if (FILTRO_BAIRRO != []) else 0
 TVOC_CUTOFF_25 = (TVOC_MIN + 0.25 * (TVOC_MAX - TVOC_MIN)) if (FILTRO_BAIRRO != []) else 0.25
 TVOC_CUTOFF_75 = (TVOC_MIN + 0.75 * (TVOC_MAX - TVOC_MIN)) if (FILTRO_BAIRRO != []) else 0.75
 
@@ -924,7 +1002,7 @@ chartCols[0].plotly_chart(chartRuido, use_container_width=True)
 chartCols[1].plotly_chart(chartCO2, use_container_width=True)
 chartCols[2].plotly_chart(chartTVOC, use_container_width=True)
 
-DF_TABLE = DF_AMV_FILTERED[[
+DF_TABLE = DF_DATA[[
     'BAIRRO', 
     'data',
     'temperatura', 'umidade', 'luminosidade', 'ruido', 'eco2', 'etvoc',
@@ -970,7 +1048,14 @@ st.markdown(
 )
 
 COLS_GROUP_RADAR = ['BAIRRO']
-COLS_VALUE_RADAR = ['TEMPERATURA', 'UMIDADE', 'LUMINOSIDADE', 'RUIDO', 'CO₂', 'ETVOC']
+COLS_VALUE_RADAR = [
+    'TEMPERATURA', 'UMIDADE', 'LUMINOSIDADE', 'RUIDO', 'CO₂', 'ETVOC',
+    'NRO_CRIMES', 
+    'SAT01', 'SAT02', 'SAT03', 'SAT04', 'SAT05',
+    'SAT06', 'SAT07', 'SAT08', 'SAT09', 'SAT10',
+    'SAT11', 'SAT12', 'SAT13', 'SAT14', 'SAT15',
+    'v0001', 'v0002', 'v0003', 'v0004', 'v0005', 'v0006', 'v0007',
+]
 
 radarPropsCols = st.columns(2)
 with radarPropsCols[0]:
@@ -989,25 +1074,55 @@ with radarPropsCols[1]:
         default=['TEMPERATURA', 'UMIDADE', 'LUMINOSIDADE', 'RUIDO', 'CO₂', 'ETVOC']
     )
 
-DF_AMV_RADAR = DF_AMV_FILTERED[[
+DF_AMV_RADAR = DF_DATA[[
     'BAIRRO',   
     'temperatura',
     'umidade',
     'luminosidade',
     'ruido',
     'eco2',
-    'etvoc'
+    'etvoc',
+    'NRO_CRIMES', 
+    'QTD_RESP', 
+    'SAT01', 'SAT02', 'SAT03', 'SAT04', 'SAT05',
+    'SAT06', 'SAT07', 'SAT08', 'SAT09', 'SAT10', 
+    'SAT11', 'SAT12', 'SAT13', 'SAT14', 'SAT15', 
+    'v0001', 'v0002', 'v0003', 'v0004', 'v0005', 'v0006', 'v0007'
 ]]
 
 DF_AMV_RADAR.rename(
-columns={
-    'temperatura': 'TEMPERATURA',
-    'umidade': 'UMIDADE',
-    'luminosidade': 'LUMINOSIDADE',
-    'ruido': 'RUIDO',
-    'eco2': 'CO₂',
-    'etvoc': 'ETVOC'},
-inplace=True
+    columns={
+        'temperatura': 'TEMPERATURA',
+        'umidade': 'UMIDADE',
+        'luminosidade': 'LUMINOSIDADE',
+        'ruido': 'RUIDO',
+        'eco2': 'CO₂',
+        'etvoc': 'ETVOC',
+        # 'NRO_CRIMES': 'Qtd. Crimes',
+        # 'SAT01': 'Satisfação Bairro', 
+        # 'SAT02': 'Satisfação Saúde', 
+        # 'SAT03': 'Prática de Atividade Física', 
+        # 'SAT04': 'Satisfação Financeira', 
+        # 'SAT05': 'Satisfação com Atividade Comercial',
+        # 'SAT06': 'Satisfação com Qualidade do Ar', 
+        # 'SAT07': 'Satisfação com Ruído', 
+        # 'SAT08': 'Satisfação com Espaços de Lazer', 
+        # 'SAT09': 'Satisfação com Coleta de Lixo', 
+        # 'SAT10': 'Satisfação com Distância de Paradas de Ônibus', 
+        # 'SAT11': 'Satisfação com Qualidade de Paradas de Ônibus', 
+        # 'SAT12': 'Satisfação com Acesso a Locais Importantes da Cidade', 
+        # 'SAT13': 'Sentimento de Segurança', 
+        # 'SAT14': 'Sentimento de Confiança nas Pessoas', 
+        # 'SAT15': 'Satisfação com Tratamento de Esgoto',
+        # 'v0001': 'Total de Pessoas', 
+        # 'v0002': 'Total de Domicílios', 
+        # 'v0003': 'Total de Domicílios Particulares', 
+        # 'v0004': 'Total de Domicílios COletivos', 
+        # 'v0005': 'Média de Moradores em Domicílios Particulares Ocupados', 
+        # 'v0006': 'Percentual de Domicílios Particulares Ocupados', 
+        # 'v0007': 'Total de DomicÍlios Particulares Ocupados'
+    },
+    inplace=True
 )
 
 COLS_V = []
