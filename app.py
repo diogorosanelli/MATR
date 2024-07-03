@@ -24,8 +24,8 @@ from plotly.subplots import make_subplots
 # ================ PARÂMETROS ================
 
 # Paths
-# BASE_PATH = '/mnt/d/PESSOAL/240319-RS-MATR/source'   # DEV
-BASE_PATH = '/mount/src/matr/'                       # PRD
+BASE_PATH = '/mnt/d/PESSOAL/240319-RS-MATR/source'   # DEV
+# BASE_PATH = '/mount/src/matr/'                       # PRD
 DATA_PATH = f'{BASE_PATH}/data'
 
 # Configurações de Mapa
@@ -607,29 +607,7 @@ DF_SATISFACAO_STATS = DF_SATISFACAO.groupby('BAIRRO').agg({
   'Satisfação com tratamento de esgoto': 'mean'
 })
 
-# DASHBOARD
-
-with st.container():
-    st.markdown(
-        """
-        <style>
-        .header-bar {
-            background-color: #222222;
-            padding: 10px;
-            color: white;
-            text-align: center;
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 15px;
-        }
-        </style>
-        <div class="header-bar">
-            Monitoramento Ambiental em Tempo Real
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
+# ==================== DASHBOARD ====================
 DF_AMV_FILTERED = DF_AMV_BAIRRO.copy()
 
 FILTROS = {
@@ -642,6 +620,24 @@ FILTROS = {
   'HORA': list(DF_AMV_FILTERED['F_HORA'].unique()),
   'MINUTO': list(DF_AMV_FILTERED['F_MINUTO'].unique()),
 }
+
+st.markdown(
+    """
+    <style>
+    .header-bar {
+        background-color: #222222;
+        padding: 10px;
+        color: white;
+        text-align: center;
+        font-size: 24px;
+        font-weight: bold;
+        margin-bottom: 15px;
+    }
+    </style>
+    <div class="header-bar">MONITORAMENTO AMBIENTAL EM TEMPO REAL</div>
+    """,
+    unsafe_allow_html=True
+)
 
 st.caption(body="<div style='text-align:center;font-weight:bold;font-size:14pt;color:#FFF;padding:10px;'>FILTROS<div>", unsafe_allow_html=True)
 
@@ -755,150 +751,166 @@ DF_AMV_FILTERED = DF_AMV_FILTERED[
 ]
 
 # TEMPERATURA
-TEMPERATURE_MIN = DF_AMV_FILTERED['temperatura'].min()
-TEMPERATURE_MAX = DF_AMV_FILTERED['temperatura'].max()
-TEMPERATURE_MEAN = DF_AMV_FILTERED['temperatura'].mean()
-TEMPERATURE_CUTOFF_25 = TEMPERATURE_MIN + 0.25 * (TEMPERATURE_MAX - TEMPERATURE_MIN)
-TEMPERATURE_CUTOFF_75 = TEMPERATURE_MIN + 0.75 * (TEMPERATURE_MAX - TEMPERATURE_MIN)
+TEMPERATURE_MIN = DF_AMV_FILTERED['temperatura'].min() if (FILTRO_BAIRRO != []) else 0
+TEMPERATURE_MAX = DF_AMV_FILTERED['temperatura'].max() if (FILTRO_BAIRRO != []) else 1
+TEMPERATURE_MEAN = DF_AMV_FILTERED['temperatura'].mean() if (FILTRO_BAIRRO != []) else 0
+TEMPERATURE_CUTOFF_25 = (TEMPERATURE_MIN + 0.25 * (TEMPERATURE_MAX - TEMPERATURE_MIN)) if (FILTRO_BAIRRO != []) else 0.25
+TEMPERATURE_CUTOFF_75 = (TEMPERATURE_MIN + 0.75 * (TEMPERATURE_MAX - TEMPERATURE_MIN)) if (FILTRO_BAIRRO != []) else 0.75
 
 # UMIDADE
-UMIDADE_MIN = DF_AMV_FILTERED['umidade'].min()
-UMIDADE_MAX = DF_AMV_FILTERED['umidade'].max()
-UMIDADE_MEAN = DF_AMV_FILTERED['umidade'].mean()
-UMIDADE_CUTOFF_25 = UMIDADE_MIN + 0.25 * (UMIDADE_MAX - UMIDADE_MIN)
-UMIDADE_CUTOFF_75 = UMIDADE_MIN + 0.75 * (UMIDADE_MAX - UMIDADE_MIN)
+UMIDADE_MIN = DF_AMV_FILTERED['umidade'].min() if (FILTRO_BAIRRO != []) else 0
+UMIDADE_MAX = DF_AMV_FILTERED['umidade'].max() if (FILTRO_BAIRRO != []) else 1
+UMIDADE_MEAN = DF_AMV_FILTERED['umidade'].mean() if (FILTRO_BAIRRO != []) else 0
+UMIDADE_CUTOFF_25 = (UMIDADE_MIN + 0.25 * (UMIDADE_MAX - UMIDADE_MIN)) if (FILTRO_BAIRRO != []) else 0.25
+UMIDADE_CUTOFF_75 = (UMIDADE_MIN + 0.75 * (UMIDADE_MAX - UMIDADE_MIN)) if (FILTRO_BAIRRO != []) else 0.75
 
 # LUMINOSIDADE
-LUMINOSIDADE_MIN = DF_AMV_FILTERED['luminosidade'].min()
-LUMINOSIDADE_MAX = DF_AMV_FILTERED['luminosidade'].max()
-LUMINOSIDADE_MEAN = DF_AMV_FILTERED['luminosidade'].mean()
-LUMINOSIDADE_CUTOFF_25 = LUMINOSIDADE_MIN + 0.25 * (LUMINOSIDADE_MAX - LUMINOSIDADE_MIN)
-LUMINOSIDADE_CUTOFF_75 = LUMINOSIDADE_MIN + 0.75 * (LUMINOSIDADE_MAX - LUMINOSIDADE_MIN)
+LUMINOSIDADE_MIN = DF_AMV_FILTERED['luminosidade'].min() if (FILTRO_BAIRRO != []) else 0
+LUMINOSIDADE_MAX = DF_AMV_FILTERED['luminosidade'].max() if (FILTRO_BAIRRO != []) else 1
+LUMINOSIDADE_MEAN = DF_AMV_FILTERED['luminosidade'].mean() if (FILTRO_BAIRRO != []) else 0
+LUMINOSIDADE_CUTOFF_25 = (LUMINOSIDADE_MIN + 0.25 * (LUMINOSIDADE_MAX - LUMINOSIDADE_MIN)) if (FILTRO_BAIRRO != []) else 0.25
+LUMINOSIDADE_CUTOFF_75 = (LUMINOSIDADE_MIN + 0.75 * (LUMINOSIDADE_MAX - LUMINOSIDADE_MIN)) if (FILTRO_BAIRRO != []) else 0.75
 
 # RUÍDO
-RUIDO_MIN = DF_AMV_FILTERED['ruido'].min()
-RUIDO_MAX = DF_AMV_FILTERED['ruido'].max()
-RUIDO_MEAN = DF_AMV_FILTERED['ruido'].mean()
-RUIDO_CUTOFF_25 = RUIDO_MIN + 0.25 * (RUIDO_MAX - RUIDO_MIN)
-RUIDO_CUTOFF_75 = RUIDO_MIN + 0.75 * (RUIDO_MAX - RUIDO_MIN)
+RUIDO_MIN = DF_AMV_FILTERED['ruido'].min() if (FILTRO_BAIRRO != []) else 0
+RUIDO_MAX = DF_AMV_FILTERED['ruido'].max() if (FILTRO_BAIRRO != []) else 1
+RUIDO_MEAN = DF_AMV_FILTERED['ruido'].mean() if (FILTRO_BAIRRO != []) else 0
+RUIDO_CUTOFF_25 = (RUIDO_MIN + 0.25 * (RUIDO_MAX - RUIDO_MIN)) if (FILTRO_BAIRRO != []) else 0.25
+RUIDO_CUTOFF_75 = (RUIDO_MIN + 0.75 * (RUIDO_MAX - RUIDO_MIN)) if (FILTRO_BAIRRO != []) else 0.75
 
 # CO2
-CO2_MIN = DF_AMV_FILTERED['eco2'].min()
-CO2_MAX = DF_AMV_FILTERED['eco2'].max()
-CO2_MEAN = DF_AMV_FILTERED['eco2'].mean()
-CO2_CUTOFF_25 = CO2_MIN + 0.25 * (CO2_MAX - CO2_MIN)
-CO2_CUTOFF_75 = CO2_MIN + 0.75 * (CO2_MAX - CO2_MIN)
+CO2_MIN = DF_AMV_FILTERED['eco2'].min() if (FILTRO_BAIRRO != []) else 0
+CO2_MAX = DF_AMV_FILTERED['eco2'].max() if (FILTRO_BAIRRO != []) else 1
+CO2_MEAN = DF_AMV_FILTERED['eco2'].mean() if (FILTRO_BAIRRO != []) else 0
+CO2_CUTOFF_25 = (CO2_MIN + 0.25 * (CO2_MAX - CO2_MIN)) if (FILTRO_BAIRRO != []) else 0.25
+CO2_CUTOFF_75 = (CO2_MIN + 0.75 * (CO2_MAX - CO2_MIN)) if (FILTRO_BAIRRO != []) else 0.75
 
 # TVOC
-TVOC_MIN = DF_AMV_FILTERED['etvoc'].min()
-TVOC_MAX = DF_AMV_FILTERED['etvoc'].max()
-TVOC_MEAN = DF_AMV_FILTERED['etvoc'].mean()
-TVOC_CUTOFF_25 = TVOC_MIN + 0.25 * (TVOC_MAX - TVOC_MIN)
-TVOC_CUTOFF_75 = TVOC_MIN + 0.75 * (TVOC_MAX - TVOC_MIN)
+TVOC_MIN = DF_AMV_FILTERED['etvoc'].min() if (FILTRO_BAIRRO != []) else 0
+TVOC_MAX = DF_AMV_FILTERED['etvoc'].max() if (FILTRO_BAIRRO != []) else 1
+TVOC_MEAN = DF_AMV_FILTERED['etvoc'].mean() if (FILTRO_BAIRRO != []) else 0
+TVOC_CUTOFF_25 = (TVOC_MIN + 0.25 * (TVOC_MAX - TVOC_MIN)) if (FILTRO_BAIRRO != []) else 0.25
+TVOC_CUTOFF_75 = (TVOC_MIN + 0.75 * (TVOC_MAX - TVOC_MIN)) if (FILTRO_BAIRRO != []) else 0.75
 
-st.caption(body="<div style='text-align:center;font-weight:bold;font-size:14pt;color:#FFF;padding:10px;'>GRÁFICOS DE INDICADORES<div>", unsafe_allow_html=True)
+st.markdown(
+    """
+    <style>
+    .title-radar {
+        background-color: #222222;
+        padding: 5px;
+        color: #FFFFFF;
+        text-align: center;
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    </style>
+    <div class="title-radar">GRÁFICO DE INDICADORES</div>
+    """,
+    unsafe_allow_html=True
+)
 
 indicatorCharts = []
 
 # GRÁFICO DE TEMPERATURA
 chartTemperatureColor, chartTemperatureShadown = ChartUtils.getGaugeIndicatorColors(
-  TEMPERATURE_MEAN, 
-  TEMPERATURE_CUTOFF_25, 
-  TEMPERATURE_CUTOFF_75
+TEMPERATURE_MEAN, 
+TEMPERATURE_CUTOFF_25, 
+TEMPERATURE_CUTOFF_75
 )
 chartTemperature = ChartUtils.createGauge(
-  title="Temperatura (°C)",
-  value=TEMPERATURE_MEAN,
-  min=TEMPERATURE_MIN,
-  max=TEMPERATURE_MAX,
-  chartColor=f"{chartTemperatureColor}",
-  shadownColor=f"{chartTemperatureShadown}",
-  theme='dark'
+    title="Temperatura (°C)",
+    value=TEMPERATURE_MEAN,
+    min=TEMPERATURE_MIN,
+    max=TEMPERATURE_MAX,
+    chartColor=f"{chartTemperatureColor}",
+    shadownColor=f"{chartTemperatureShadown}",
+    theme='dark'
 )
 indicatorCharts.append(chartTemperature)
 
 # GRÁFICO DE UMIDADE
 chartUmidadeColor, chartUmidadeShadown = ChartUtils.getGaugeIndicatorColors(
-  UMIDADE_MEAN, 
-  UMIDADE_CUTOFF_25, 
-  UMIDADE_CUTOFF_75
+UMIDADE_MEAN, 
+UMIDADE_CUTOFF_25, 
+UMIDADE_CUTOFF_75
 )
 chartUmidade = ChartUtils.createGauge(
-  title="Umidade",
-  value=UMIDADE_MEAN,
-  min=UMIDADE_MIN,
-  max=UMIDADE_MAX,
-  chartColor=f"{chartUmidadeColor}",
-  shadownColor=f"{chartUmidadeShadown}",
-  theme='dark'
+    title="Umidade",
+    value=UMIDADE_MEAN,
+    min=UMIDADE_MIN,
+    max=UMIDADE_MAX,
+    chartColor=f"{chartUmidadeColor}",
+    shadownColor=f"{chartUmidadeShadown}",
+    theme='dark'
 )
 indicatorCharts.append(chartUmidade)
 
 # GRÁFICO DE LUMINOSIDADE
 chartLuminosidadeColor, chartLuminosidadeShadown = ChartUtils.getGaugeIndicatorColors(
-  LUMINOSIDADE_MEAN, 
-  LUMINOSIDADE_CUTOFF_25, 
-  LUMINOSIDADE_CUTOFF_75
+LUMINOSIDADE_MEAN, 
+LUMINOSIDADE_CUTOFF_25, 
+LUMINOSIDADE_CUTOFF_75
 )
 chartLuminosidade = ChartUtils.createGauge(
-  title="Luminosidade",
-  value=LUMINOSIDADE_MEAN,
-  min=LUMINOSIDADE_MIN,
-  max=LUMINOSIDADE_MAX,
-  chartColor=f"{chartLuminosidadeColor}",
-  shadownColor=f"{chartLuminosidadeShadown}",
-  theme='dark'
+    title="Luminosidade",
+    value=LUMINOSIDADE_MEAN,
+    min=LUMINOSIDADE_MIN,
+    max=LUMINOSIDADE_MAX,
+    chartColor=f"{chartLuminosidadeColor}",
+    shadownColor=f"{chartLuminosidadeShadown}",
+    theme='dark'
 )
 indicatorCharts.append(chartLuminosidade)
 
 # GRÁFICO DE RUÍDO
 chartRuidoColor, chartRuidoShadown = ChartUtils.getGaugeIndicatorColors(
-  RUIDO_MEAN, 
-  RUIDO_CUTOFF_25, 
-  RUIDO_CUTOFF_75
+RUIDO_MEAN, 
+RUIDO_CUTOFF_25, 
+RUIDO_CUTOFF_75
 )
 chartRuido = ChartUtils.createGauge(
-  title="Ruído",
-  value=RUIDO_MEAN,
-  min=RUIDO_MIN,
-  max=RUIDO_MAX,
-  chartColor=f"{chartRuidoColor}",
-  shadownColor=f"{chartRuidoShadown}",
-  theme='dark'
+    title="Ruído",
+    value=RUIDO_MEAN,
+    min=RUIDO_MIN,
+    max=RUIDO_MAX,
+    chartColor=f"{chartRuidoColor}",
+    shadownColor=f"{chartRuidoShadown}",
+    theme='dark'
 )
 indicatorCharts.append(chartRuido)
 
 # GRÁFICO DE CO2
 chartCO2Color, chartCO2Shadown = ChartUtils.getGaugeIndicatorColors(
-  CO2_MEAN, 
-  CO2_CUTOFF_25, 
-  CO2_CUTOFF_75
+CO2_MEAN, 
+CO2_CUTOFF_25, 
+CO2_CUTOFF_75
 )
 chartCO2 = ChartUtils.createGauge(
-  title="CO₂",
-  value=CO2_MEAN,
-  min=CO2_MIN,
-  max=CO2_MAX,
-  chartColor=f"{chartCO2Color}",
-  shadownColor=f"{chartCO2Shadown}",
-  theme='dark'
+    title="CO₂",
+    value=CO2_MEAN,
+    min=CO2_MIN,
+    max=CO2_MAX,
+    chartColor=f"{chartCO2Color}",
+    shadownColor=f"{chartCO2Shadown}",
+    theme='dark'
 )
 indicatorCharts.append(chartCO2)
 
 # GRÁFICO DE TVOC
 chartTVOCColor, chartTVOCShadown = ChartUtils.getGaugeIndicatorColors(
-  TVOC_MEAN, 
-  TVOC_CUTOFF_25, 
-  TVOC_CUTOFF_75
+TVOC_MEAN, 
+TVOC_CUTOFF_25, 
+TVOC_CUTOFF_75
 )
 chartTVOC = ChartUtils.createGauge(
-  title="ETVOC",
-  value=TVOC_MEAN,
-  min=TVOC_MIN,
-  max=TVOC_MAX,
-  chartColor=f"{chartTVOCColor}",
-  shadownColor=f"{chartTVOCShadown}",
-  theme='dark'
+    title="ETVOC",
+    value=TVOC_MEAN,
+    min=TVOC_MIN,
+    max=TVOC_MAX,
+    chartColor=f"{chartTVOCColor}",
+    shadownColor=f"{chartTVOCShadown}",
+    theme='dark'
 )
 indicatorCharts.append(chartTVOC)
 
@@ -939,28 +951,26 @@ st.dataframe(
     selection_mode="single-row")
 
 # ====================== GRÁFICO RADAR ======================
-
-with st.container():
-    st.markdown(
-        """
-        <style>
-        .title-radar {
-            background-color: #222222;
-            padding: 5px;
-            color: #FFFFFF;
-            text-align: center;
-            font-size: 16px;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        </style>
-        <div class="title-radar">COMPARATIVO DE INDICADORES</div>
-        """,
-        unsafe_allow_html=True
-    )
+st.markdown(
+    """
+    <style>
+    .title-radar {
+        background-color: #222222;
+        padding: 5px;
+        color: #FFFFFF;
+        text-align: center;
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    </style>
+    <div class="title-radar">COMPARATIVO DE INDICADORES</div>
+    """,
+    unsafe_allow_html=True
+)
 
 COLS_GROUP_RADAR = ['BAIRRO']
-COLS_VALUE_RADAR = ['TEMPERATURA', 'UMIDADE', 'LUMINOSIDADE', 'RUIDO', 'CO2', 'ETVOC']
+COLS_VALUE_RADAR = ['TEMPERATURA', 'UMIDADE', 'LUMINOSIDADE', 'RUIDO', 'CO₂', 'ETVOC']
 
 radarPropsCols = st.columns(2)
 with radarPropsCols[0]:
@@ -976,7 +986,7 @@ with radarPropsCols[1]:
         label='Variáveis', 
         options=COLS_VALUE_RADAR, 
         placeholder="Selecione as variáveis",
-        default=['TEMPERATURA', 'UMIDADE', 'LUMINOSIDADE', 'RUIDO', 'CO2', 'ETVOC']
+        default=['TEMPERATURA', 'UMIDADE', 'LUMINOSIDADE', 'RUIDO', 'CO₂', 'ETVOC']
     )
 
 DF_AMV_RADAR = DF_AMV_FILTERED[[
@@ -990,14 +1000,14 @@ DF_AMV_RADAR = DF_AMV_FILTERED[[
 ]]
 
 DF_AMV_RADAR.rename(
-  columns={
-      'temperatura': 'TEMPERATURA',
-      'umidade': 'UMIDADE',
-      'luminosidade': 'LUMINOSIDADE',
-      'ruido': 'RUIDO',
-      'eco2': 'CO2',
-      'etvoc': 'ETVOC'},
-  inplace=True
+columns={
+    'temperatura': 'TEMPERATURA',
+    'umidade': 'UMIDADE',
+    'luminosidade': 'LUMINOSIDADE',
+    'ruido': 'RUIDO',
+    'eco2': 'CO₂',
+    'etvoc': 'ETVOC'},
+inplace=True
 )
 
 COLS_V = []
@@ -1035,3 +1045,21 @@ if(DF_AMV_RADAR.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR != 
         use_container_width=True, 
         hide_index=True,
         selection_mode="single-row")
+    
+st.markdown(
+    """
+    <style>
+    .title-radar {
+        background-color: #222222;
+        padding: 5px;
+        color: #FFFFFF;
+        text-align: center;
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    </style>
+    <div class="title-radar">MAPA DE INDICADORES</div>
+    """,
+    unsafe_allow_html=True
+)
