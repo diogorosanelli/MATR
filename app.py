@@ -25,8 +25,8 @@ from streamlit_folium import st_folium
 # ================ PARÂMETROS ================
 
 # Paths
-# BASE_PATH = '/mnt/d/PESSOAL/240319-RS-MATR/source'   # DEV
-BASE_PATH = '/mount/src/matr/'                       # PRD
+BASE_PATH = '/mnt/d/PESSOAL/240319-RS-MATR/source'   # DEV
+# BASE_PATH = '/mount/src/matr/'                       # PRD
 DATA_PATH = f'{BASE_PATH}/data'
 
 # Configurações de Mapa
@@ -1172,13 +1172,14 @@ mapIndicators = MapUtils.createMap(INITIAL_COORDS, 12, BASEMAPS[6], False, True,
 
 lyrBairrosStyle = {
     'fillColor': 'none',  # Sem preenchimento
-    'color': '#CDAA66',   # Cor da borda cinza
-    'weight': 3,          # Espessura da borda
+    'color': '#CCCCCC',   # Cor da borda cinza
+    'weight': 1.5,          # Espessura da borda
     'fillOpacity': 0      # Transparência do preenchimento
 }
 
+DF_BAIRROS_LYR = DF_BAIRROS[DF_BAIRROS['nome'].isin(FILTRO_BAIRRO)]
 lyrBairros = MapUtils.addLayer(
-    geoDF=DF_BAIRROS, 
+    geoDF=DF_BAIRROS_LYR, 
     layerName='Bairros',
     styleConfig=lyrBairrosStyle, 
     popupField='nome'
