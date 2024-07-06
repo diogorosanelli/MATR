@@ -37,9 +37,9 @@ BASEMAPS = [
     'Esri.WorldTopoMap',          # 1
     'Esri.WorldImagery',          # 2
     'OpenTopoMap',                # 3
-    'Stadia.AlidadeSmooth',       # 4
-    'Stadia.AlidadeSmoothDark',   # 5
-    'Stadia.AlidadeSatellite'     # 6
+    'OpenStreetMap',              # 4
+    'Cartodb Positron',           # 5
+    'Cartodb dark_matter'         # 6
 ]
 
 # Colunas dos Dataframes
@@ -1168,7 +1168,7 @@ st.markdown(
 
 chartCols = st.columns(1)
 
-mapIndicators = MapUtils.createMap(INITIAL_COORDS, 12, BASEMAPS[5], False, True, False, True)
+mapIndicators = MapUtils.createMap(INITIAL_COORDS, 12, BASEMAPS[6], False, True, False, True)
 
 lyrBairrosStyle = {
     'fillColor': 'none',  # Sem preenchimento
