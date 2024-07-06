@@ -20,6 +20,7 @@ from folium.features import GeoJsonPopup, GeoJsonTooltip
 from unidecode import unidecode
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from plotly.subplots import make_subplots
+from streamlit_folium import st_folium
 
 # ================ PARÂMETROS ================
 
@@ -774,21 +775,6 @@ DF_AMV_FILTERED = DF_AMV_FILTERED[
     (DF_AMV_FILTERED['F_MINUTO'] <= FILTRO_MINUTO_ATE)
 ]
 
-# DF_SEG_FILTERED = DF_SEG_FILTERED[
-#     # DATA / HORA DE
-#     (DF_SEG_FILTERED['F_DIA'] >= FILTRO_DIA_DE) &
-#     (DF_SEG_FILTERED['F_MES'] >= FILTRO_MES_DE) &
-#     (DF_SEG_FILTERED['F_ANO'] >= FILTRO_ANO_DE) &
-#     (DF_SEG_FILTERED['F_HORA'] >= FILTRO_HORA_DE) &
-#     (DF_SEG_FILTERED['F_MINUTO'] >= FILTRO_MINUTO_DE) &
-#     # DATA / HORA ATÉ
-#     (DF_SEG_FILTERED['F_DIA'] <= FILTRO_DIA_ATE) &
-#     (DF_SEG_FILTERED['F_MES'] <= FILTRO_MES_ATE) &
-#     (DF_SEG_FILTERED['F_ANO'] <= FILTRO_ANO_ATE) &
-#     (DF_SEG_FILTERED['F_HORA'] <= FILTRO_HORA_ATE) &
-#     (DF_SEG_FILTERED['F_MINUTO'] <= FILTRO_MINUTO_ATE)
-# ]
-
 # UNIFICANDO DADOS
 DF_SEGURANCA_GRP = DF_SEG_FILTERED.groupby(['BAIRRO']).size().reset_index(name='NRO_CRIMES')
 
@@ -1160,7 +1146,8 @@ if(DF_AMV_RADAR.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR != 
         use_container_width=True, 
         hide_index=True,
         selection_mode="single-row")
-    
+
+# ====================== MAPA ======================
 st.markdown(
     """
     <style>
@@ -1178,3 +1165,29 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
+chartCols = st.columns(1)
+
+mapIndicators = MapUtils.createMap(INITIAL_COORDS, 12, BASEMAPS[5], False, True, False, True)
+
+lyrBairrosStyle = {
+    'fillColor': 'none',  # Sem preenchimento
+    'color': '#CDAA66',   # Cor da borda cinza
+    'weight': 3,          # Espessura da borda
+    'fillOpacity': 0      # Transparência do preenchimento
+}
+
+lyrBairros = MapUtils.addLayer(
+    geoDF=DF_BAIRROS, 
+    layerName='Bairros',
+    styleConfig=lyrBairrosStyle, 
+    popupField='nome'
+)
+
+lyrBairros.add_child(
+    folium.features.GeoJsonTooltip(['nome'], labels=False)
+)
+
+mapIndicators.add_child(lyrBairros)
+
+chartCols[0] = st_folium(mapIndicators, width=1000)
