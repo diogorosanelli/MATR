@@ -1131,7 +1131,7 @@ chartMonitoramentoBairro = ChartUtils.createRadar(
     title=f'INDICADORES POR {PROPS_GROUP_RADAR}',
     dataframe=DF_AMV_RADAR_PLOT,
     fieldClasses=PROPS_GROUP_RADAR,
-    colors=px.colors.sequential.Rainbow_r,
+    colors=px.colors.sequential.Rainbow,
     theme='dark',
 )
 
