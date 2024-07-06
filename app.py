@@ -17,6 +17,7 @@ from shapely.geometry import Point
 from matplotlib import pyplot as plt
 from folium import GeoJson
 from folium.features import GeoJsonPopup, GeoJsonTooltip
+from folium.plugins import HeatMap, HeatMapWithTime
 from unidecode import unidecode
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from plotly.subplots import make_subplots
@@ -1171,24 +1172,42 @@ chartCols = st.columns(1)
 mapIndicators = MapUtils.createMap(INITIAL_COORDS, 12, BASEMAPS[6], False, True, False, True)
 
 lyrBairrosStyle = {
-    'fillColor': 'none',  # Sem preenchimento
-    'color': '#CCCCCC',   # Cor da borda cinza
+    'fillColor': 'none',    # Sem preenchimento
+    'color': '#CCCCCC',     # Cor da borda cinza
     'weight': 1.5,          # Espessura da borda
-    'fillOpacity': 0      # Transparência do preenchimento
+    'fillOpacity': 0        # Transparência do preenchimento
 }
 
-DF_BAIRROS_LYR = DF_BAIRROS[DF_BAIRROS['nome'].isin(FILTRO_BAIRRO)]
-lyrBairros = MapUtils.addLayer(
-    geoDF=DF_BAIRROS_LYR, 
-    layerName='Bairros',
-    styleConfig=lyrBairrosStyle, 
-    popupField='nome'
-)
+lyrAMVStyle = {
+    'icon': 'circle',       # Padrão folium Icon
+    'color': 'red',         # Cor do ponto
+    'fillOpacity': 0.5     # Opacidade do ponto
+}
 
-lyrBairros.add_child(
-    folium.features.GeoJsonTooltip(['nome'], labels=False)
-)
+if (FILTRO_BAIRRO != []):
+    DF_BAIRROS_LYR = DF_BAIRROS[DF_BAIRROS['nome'].isin(FILTRO_BAIRRO)]
+    lyrBairros = MapUtils.addLayer(
+        geoDF=DF_BAIRROS_LYR, 
+        layerName='Bairros',
+        styleConfig=lyrBairrosStyle, 
+        # popupField='nome'
+    )
+    # lyrBairros.add_child(folium.features.GeoJsonTooltip(['nome'], labels=True))
+    
+    # lyrAMVBairro = MapUtils.addLayer(
+    #     geoDF=DF_AMV_FILTERED[['geometry']], 
+    #     layerName='Monitoramento',
+    #     styleConfig=lyrAMVStyle
+    # )
+    
+    lyrAMVBairro = HeatMap(
+        data=DF_AMV_FILTERED[['latitude','longitude']], 
+        radius=15,
+        min_opacity=0.4, 
+        blur=18
+    )
 
-mapIndicators.add_child(lyrBairros)
+    mapIndicators.add_child(lyrBairros)
+    mapIndicators.add_child(lyrAMVBairro)
 
 chartCols[0] = st_folium(mapIndicators, width=1000)
