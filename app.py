@@ -1,4 +1,6 @@
 import warnings
+
+import folium.map
 warnings.filterwarnings("ignore")
 
 import os
@@ -16,12 +18,11 @@ import streamlit as st
 from shapely.geometry import Point
 from matplotlib import pyplot as plt
 from folium import GeoJson
-from folium.features import GeoJsonPopup, GeoJsonTooltip
+from folium.features import GeoJsonPopup, GeoJsonTooltip, DivIcon
 from folium.plugins import HeatMap, HeatMapWithTime
 from unidecode import unidecode
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
-from plotly.subplots import make_subplots
-from streamlit_folium import st_folium
+from streamlit_folium import st_folium, folium_static
 
 # ================ PARÂMETROS ================
 
@@ -37,10 +38,12 @@ BASEMAPS = [
     'Esri.WorldStreetMap',        # 0 
     'Esri.WorldTopoMap',          # 1
     'Esri.WorldImagery',          # 2
-    'OpenTopoMap',                # 3
-    'OpenStreetMap',              # 4
-    'Cartodb Positron',           # 5
-    'Cartodb dark_matter'         # 6
+    'Esri.WorldGrayCanvas',       # 3
+    'OpenTopoMap',                # 4
+    'OpenStreetMap',              # 5
+    'CartoDB.Positron',           # 6
+    'CartoDB.DarkMatter',         # 7
+    'CartoDB.Voyager',            # 8
 ]
 
 # Colunas dos Dataframes
@@ -104,6 +107,12 @@ COLS_SATISFACAO = [
 ]
 
 st.set_page_config(layout='wide')
+make_map_responsive = """
+     <style>
+        [title~="st.iframe"] { width: 100%}
+     </style>
+    """
+st.markdown(make_map_responsive, unsafe_allow_html=True)
 
 # ================ CLASSES DE NEGÓCIO ================
 
@@ -209,6 +218,10 @@ class MapUtils:
         - folium.Map: Mapa folium com os dados do GeoDataFrame.
         """
         # Criar um mapa folium centrado nas coordenadas iniciais
+        attr = (
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> '
+            'contributors, &copy; <a href="https://cartodb.com/attributions">CartoDB</a>'
+        )
         fmap = folium.Map(
             location=initialCoords[::-1], 
             zoom_start=zoomStart, 
@@ -397,7 +410,7 @@ class ChartUtils:
     def createRadar(title,
                     dataframe, 
                     fieldClasses, 
-                    colors=px.colors.sequential.Plasma_r, 
+                    colors=px.colors.sequential.Turbo, 
                     theme='light'):
         if (dataframe.empty == False):
             plotDF = pd.melt(dataframe, id_vars=fieldClasses, var_name='theta', value_name='r')
@@ -415,8 +428,11 @@ class ChartUtils:
             title=title,
             color=fieldClasses,
             line_close=True,
-            color_discrete_sequence=colors
+            color_discrete_sequence=colors,
+            markers=True
         )
+        
+        fig.update_traces(line={'width': 5})
         
         if (theme=='dark'):
             fig.update_layout(
@@ -424,6 +440,23 @@ class ChartUtils:
                 paper_bgcolor="black",
                 plot_bgcolor="black",
                 template="plotly_dark",
+                # title_font_family='Arial',
+                title_font_size=20,
+                title_font_weight='bold',
+                title_xanchor='center',
+                title_yanchor='top',
+                title_x=0.5,
+                title_y=0.95,
+                # showlegend=False,
+                legend_title='LEGENDA',
+                legend_orientation='h',
+            ) 
+        else:
+            fig.update_layout(
+                height=800,
+                paper_bgcolor="white",
+                plot_bgcolor="white",
+                template="plotly_white",
                 # title_font_family='Arial',
                 title_font_size=20,
                 title_font_weight='bold',
@@ -471,8 +504,8 @@ class Utils:
 # ================ MAIN ================
 
 # Carregar dados de Bairros
-DF_BAIRROS = DataLoader.loadSHP(DATA_PATH, 'RS_CAXIASDOSUL_BAIRROS')
-DF_BAIRROS.drop(columns=['numerolei', 'link_doc_b', 'observacoe',
+DF_BAIRROS_PLG = DataLoader.loadSHP(DATA_PATH, 'RS_CAXIASDOSUL_BAIRROS')
+DF_BAIRROS_PLG.drop(columns=['numerolei', 'link_doc_b', 'observacoe',
                          'OBJECTID', 'bairro', 'FREQUENCY', 
                          'MIN_temper', 'MAX_temper', 'MEAN_tempe', 
                          'MIN_umidad', 'MAX_umidad', 'MEAN_umida', 
@@ -483,9 +516,13 @@ DF_BAIRROS.drop(columns=['numerolei', 'link_doc_b', 'observacoe',
                          'Shape_Leng', 'Shape_Area'], 
                 axis='columns', 
                 inplace=True)
+# DF_BAIRROS_PLG.rename(columns={'nome': 'BAIRRO'}, inplace=True)
+
+DF_BAIRROS_PTN = DataLoader.loadSHP(DATA_PATH, 'RS_CAXIASDOSUL_PTN_Bairros')
+# DF_BAIRROS_PTN.rename(columns={'nome': 'BAIRRO'}, inplace=True)
 
 # Reprojetando camada de bairros
-DF_BAIRROS = DF_BAIRROS.to_crs(crs="EPSG:4326")
+DF_BAIRROS_PLG = DF_BAIRROS_PLG.to_crs(crs="EPSG:4326")
 
 # Carregar dados de Setores Censitários
 DF_SETORES = DataLoader.loadSHP(DATA_PATH, 'RS_Malha_Preliminar_2022')
@@ -523,13 +560,13 @@ DF_CENSO_2022 = DF_CENSO_2022[DF_CENSO_2022['NM_MUN'] == 'Caxias do Sul']
 
 # MONITORAMENTO AMBIENTAL ← BAIRROS
 DF_AMV_BAIRRO = MapUtils.createSpatialJoin(
-  referenceDF=DF_BAIRROS[['geometry','nome']],
+  referenceDF=DF_BAIRROS_PLG[['geometry','nome']],
   targetDF=DF_AMV)
 DF_AMV_BAIRRO.rename(columns={'nome':'bairro'}, inplace=True)
 
 # SETOR CENSITÁRIO ← BAIRROS
 DF_SETORES_BAIRROS = MapUtils.createSpatialJoin(
-  referenceDF=DF_BAIRROS[['geometry','nome']],
+  referenceDF=DF_BAIRROS_PLG[['geometry','nome']],
   targetDF=DF_SETORES)
 DF_SETORES_BAIRROS.rename(columns={'nome':'bairro'}, inplace=True)
 
@@ -1044,22 +1081,23 @@ COLS_VALUE_RADAR = [
     'v0001', 'v0002', 'v0003', 'v0004', 'v0005', 'v0006', 'v0007',
 ]
 
-radarPropsCols = st.columns(2)
-with radarPropsCols[0]:
-    PROPS_GROUP_RADAR = st.selectbox(
-        label='Grupo', 
-        options=COLS_GROUP_RADAR, 
-        placeholder="Selecione a propriedade de grupo",
-        index=0
-    )
+PROPS_GROUP_RADAR = 'BAIRRO'
+# radarPropsCols = st.columns(2)
+# with radarPropsCols[0]:
+    # PROPS_GROUP_RADAR = st.selectbox(
+    #     label='Grupo', 
+    #     options=COLS_GROUP_RADAR, 
+    #     placeholder="Selecione a propriedade de grupo",
+    #     index=0,       
+    # )
 
-with radarPropsCols[1]:
-    PROPS_VALUE_RADAR = st.multiselect(
-        label='Variáveis', 
-        options=COLS_VALUE_RADAR, 
-        placeholder="Selecione as variáveis",
-        default=['TEMPERATURA', 'UMIDADE', 'LUMINOSIDADE', 'RUIDO', 'CO₂', 'ETVOC']
-    )
+# with radarPropsCols[1]:
+PROPS_VALUE_RADAR = st.multiselect(
+    label='Variáveis', 
+    options=COLS_VALUE_RADAR, 
+    placeholder="Selecione as variáveis",
+    default=['TEMPERATURA', 'UMIDADE', 'LUMINOSIDADE', 'RUIDO', 'CO₂', 'ETVOC']
+)
 
 DF_AMV_RADAR = DF_DATA[[
     'BAIRRO',   
@@ -1131,7 +1169,7 @@ chartMonitoramentoBairro = ChartUtils.createRadar(
     title=f'INDICADORES POR {PROPS_GROUP_RADAR}',
     dataframe=DF_AMV_RADAR_PLOT,
     fieldClasses=PROPS_GROUP_RADAR,
-    colors=px.colors.diverging.Portland,
+    colors=px.colors.qualitative.Light24,
     theme='dark',
 )
 
@@ -1167,47 +1205,90 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-chartCols = st.columns(1)
-
 mapIndicators = MapUtils.createMap(INITIAL_COORDS, 12, BASEMAPS[6], False, True, False, True)
 
-lyrBairrosStyle = {
-    'fillColor': 'none',    # Sem preenchimento
-    'color': '#CCCCCC',     # Cor da borda cinza
-    'weight': 1.5,          # Espessura da borda
-    'fillOpacity': 0        # Transparência do preenchimento
+# lyrBairrosPLGStyle = {
+#     'fillColor': '#CCCCCC',    # Sem preenchimento
+#     'color': '#CCCCCC',     # Cor da borda cinza
+#     'weight': 1.5,          # Espessura da borda
+#     'fillOpacity': 0.01     # Transparência do preenchimento
+# }
+
+# lyrBairrosPTNStyle = {
+#     'icon': 'circle',       # Padrão folium Icon
+#     'color': '#CCCCCC',     # Cor do ponto
+#     'fillOpacity': 0.5      # Opacidade do ponto
+# }
+
+lyrLabelStyle = {
+    'fillColor': '#FFFFFF',     # Sem preenchimento
+    'color': '#FFFFFF',         # Cor da borda cinza
+    'weight': 0,                # Espessura da borda
+    'fillOpacity': 0.01         # Transparência do preenchimento
 }
 
-lyrAMVStyle = {
-    'icon': 'circle',       # Padrão folium Icon
-    'color': 'red',         # Cor do ponto
-    'fillOpacity': 0.5     # Opacidade do ponto
-}
-
-if (FILTRO_BAIRRO != []):
-    DF_BAIRROS_LYR = DF_BAIRROS[DF_BAIRROS['nome'].isin(FILTRO_BAIRRO)]
-    lyrBairros = MapUtils.addLayer(
-        geoDF=DF_BAIRROS_LYR, 
-        layerName='Bairros',
-        styleConfig=lyrBairrosStyle, 
-        # popupField='nome'
-    )
-    # lyrBairros.add_child(folium.features.GeoJsonTooltip(['nome'], labels=True))
+if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR != []):
+    DF_BAIRROS_LYR = DF_BAIRROS_PLG[DF_BAIRROS_PLG['nome'].isin(FILTRO_BAIRRO)]
+    DF_BAIRROS_LYR.rename(columns={'nome': 'BAIRRO'}, inplace=True)
+    DF_BAIRROS_LYR = DF_BAIRROS_LYR.merge(DF_RADAR_TABLE, how='left', left_on='BAIRRO', right_on='BAIRRO')
+    DF_BAIRROS_LYR['GEOID'] = DF_BAIRROS_LYR.index.astype(str)
+    DF_BAIRROS_LYR['CENTROID'] = DF_BAIRROS_LYR.centroid
+    DF_BAIRROS_LYR['LAT'] = DF_BAIRROS_LYR['CENTROID'].map(lambda c: c.y)
+    DF_BAIRROS_LYR['LON'] = DF_BAIRROS_LYR['CENTROID'].map(lambda c: c.x)
     
-    # lyrAMVBairro = MapUtils.addLayer(
-    #     geoDF=DF_AMV_FILTERED[['geometry']], 
-    #     layerName='Monitoramento',
-    #     styleConfig=lyrAMVStyle
-    # )
-    
-    lyrAMVBairro = HeatMap(
-        data=DF_AMV_FILTERED[['latitude','longitude']], 
-        radius=15,
-        min_opacity=0.4, 
-        blur=18
-    )
+    # Rótulos para Nome de Bairros
+    for i, row in DF_BAIRROS_LYR.iterrows():
+        folium.map.Marker(
+            location=[row['LAT'],row['LON']],
+            icon=DivIcon(
+                # icon_size=(100,24),
+                # icon_anchor=(25,0),
+                html=f'<div style="font-size:8pt;color:white;font-weight:bold;text-shadow: #000 1px 0 10px;">{row['BAIRRO']}</div>'
+            )
+        ).add_to(mapIndicators)
+            
+    # --- TEMPERATURA ---
+    if('TEMPERATURA' in PROPS_VALUE_RADAR):
+        LYR_BAIRROS_TEMPERATURA = folium.Choropleth(
+            geo_data=DF_BAIRROS_LYR[['geometry','GEOID','BAIRRO','TEMPERATURA']],
+            data=DF_BAIRROS_LYR,
+            name='Temperatura por Bairro',
+            columns=['GEOID','TEMPERATURA'],
+            key_on='feature.id',
+            fill_color='Spectral',
+            fill_opacity=0.75,
+            line_opacity=0.0,
+            line_color='white', 
+            line_weight=0,
+            highlight=True, 
+            smooth_factor=1.0,
+            legend_name='Temperatura por Bairro',
+            control=True,
+            bins=10,
+            # bins=[0, 5, 10, 15, 20, 25, 30, 50, 75, 100],
+        ).add_to(mapIndicators)
+        
+    if('UMIDADE' in PROPS_VALUE_RADAR):
+        LYR_BAIRROS_TEMPERATURA = folium.Choropleth(
+            geo_data=DF_BAIRROS_LYR[['geometry','GEOID','BAIRRO','UMIDADE']],
+            data=DF_BAIRROS_LYR,
+            name='Umidade por Bairro',
+            columns=['GEOID','UMIDADE'],
+            key_on='feature.id',
+            fill_color='Spectral',
+            fill_opacity=0.75,
+            line_opacity=0.0,
+            line_color='white', 
+            line_weight=0,
+            highlight=True, 
+            smooth_factor=1.0,
+            legend_name='Umidade por Bairro',
+            control=True,
+            bins=10,
+            # bins=[0, 5, 10, 15, 20, 25, 30, 50, 75, 100],
+        ).add_to(mapIndicators)
+        
+    folium.FitOverlays().add_to(mapIndicators)
+    folium.LayerControl().add_to(mapIndicators)
 
-    mapIndicators.add_child(lyrBairros)
-    mapIndicators.add_child(lyrAMVBairro)
-
-chartCols[0] = st_folium(mapIndicators, width=1000)
+folium_static(mapIndicators)
