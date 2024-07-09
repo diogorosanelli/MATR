@@ -27,8 +27,8 @@ from streamlit_folium import st_folium, folium_static
 # ================ PARÂMETROS ================
 
 # Paths
-BASE_PATH = '/mnt/d/PESSOAL/240319-RS-MATR/source'   # DEV
-# BASE_PATH = '/mount/src/matr/'                       # PRD
+# BASE_PATH = '/mnt/d/PESSOAL/240319-RS-MATR/source'   # DEV
+BASE_PATH = '/mount/src/matr/'                       # PRD
 DATA_PATH = f'{BASE_PATH}/data'
 
 # Configurações de Mapa
@@ -536,17 +536,19 @@ class Utils:
 
 # Carregar dados de Bairros
 DF_BAIRROS_PLG = DataLoader.loadSHP(DATA_PATH, 'RS_CAXIASDOSUL_BAIRROS')
-DF_BAIRROS_PLG.drop(columns=['numerolei', 'link_doc_b', 'observacoe',
-                         'OBJECTID', 'bairro', 'FREQUENCY', 
-                         'MIN_temper', 'MAX_temper', 'MEAN_tempe', 
-                         'MIN_umidad', 'MAX_umidad', 'MEAN_umida', 
-                         'MIN_lumino', 'MAX_lumino', 'MEAN_lumin',
-                         'MIN_ruido', 'MAX_ruido', 'MEAN_ruido', 
-                         'MIN_eco2', 'MAX_eco2', 'MEAN_eco2', 
-                         'MIN_etvoc', 'MAX_etvoc', 'MEAN_etvoc', 
-                         'Shape_Leng', 'Shape_Area'], 
-                axis='columns', 
-                inplace=True)
+DF_BAIRROS_PLG.drop(
+    columns=['numerolei', 'link_doc_b', 'observacoe',
+             'OBJECTID', 'bairro', 'FREQUENCY', 
+             'MIN_temper', 'MAX_temper', 'MEAN_tempe', 
+             'MIN_umidad', 'MAX_umidad', 'MEAN_umida', 
+             'MIN_lumino', 'MAX_lumino', 'MEAN_lumin',
+             'MIN_ruido', 'MAX_ruido', 'MEAN_ruido', 
+             'MIN_eco2', 'MAX_eco2', 'MEAN_eco2', 
+             'MIN_etvoc', 'MAX_etvoc', 'MEAN_etvoc', 
+             'Shape_Leng', 'Shape_Area'], 
+    axis='columns', 
+    inplace=True
+)
 # DF_BAIRROS_PLG.rename(columns={'nome': 'BAIRRO'}, inplace=True)
 
 DF_BAIRROS_PTN = DataLoader.loadSHP(DATA_PATH, 'RS_CAXIASDOSUL_PTN_Bairros')
