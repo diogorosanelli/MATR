@@ -19,7 +19,7 @@ from shapely.geometry import Point
 from matplotlib import pyplot as plt
 from folium import GeoJson
 from folium.features import GeoJsonPopup, GeoJsonTooltip, DivIcon
-from folium.plugins import HeatMap, HeatMapWithTime
+from folium.plugins import HeatMap, HeatMapWithTime, MarkerCluster
 from unidecode import unidecode
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from streamlit_folium import st_folium, folium_static
@@ -27,8 +27,8 @@ from streamlit_folium import st_folium, folium_static
 # ================ PARÂMETROS ================
 
 # Paths
-# BASE_PATH = '/mnt/d/PESSOAL/240319-RS-MATR/source'   # DEV
-BASE_PATH = '/mount/src/matr/'                       # PRD
+BASE_PATH = '/mnt/d/PESSOAL/240319-RS-MATR/source'   # DEV
+# BASE_PATH = '/mount/src/matr/'                       # PRD
 DATA_PATH = f'{BASE_PATH}/data'
 
 # Configurações de Mapa
@@ -385,6 +385,21 @@ class ChartUtils:
                 title_x=0.5,
                 title_y=0.9,
             )
+        else:
+            fig.update_layout(
+                height=300,
+                # paper_bgcolor="#FFFFFF",
+                # plot_bgcolor="#FFFFFF",
+                template="plotly_white",
+                # title_font_family='Arial',
+                title_text=title,
+                title_font_size=20,
+                title_font_weight='bold',
+                title_xanchor='center',
+                title_yanchor='top',
+                title_x=0.5,
+                title_y=0.9,
+            )
         
         return fig
 
@@ -467,6 +482,22 @@ class ChartUtils:
                 # showlegend=False,
                 legend_title='LEGENDA',
                 legend_orientation='h',
+                
+                polar_angularaxis_color='#000',
+                polar_angularaxis_gridcolor='#FFF',
+                polar_angularaxis_gridwidth=3,
+                polar_angularaxis_griddash='solid',
+                polar_angularaxis_linecolor='#AAA',
+                polar_angularaxis_linewidth=1,
+                polar_angularaxis_tickcolor='#AAA',
+                
+                polar_radialaxis_color='#000',
+                polar_radialaxis_gridcolor='#FFF',
+                polar_radialaxis_gridwidth=3,
+                polar_radialaxis_griddash='dot',
+                polar_radialaxis_linecolor='#FFF',
+                
+                polar_bgcolor='#F0F0F0',
             )
         
         return fig
@@ -549,7 +580,38 @@ geometry = [Point(xy) for xy in zip(DF_AMV['longitude'], DF_AMV['latitude'])]
 DF_AMV = gpd.GeoDataFrame(DF_AMV, geometry=geometry, crs="EPSG:4326")
 
 # Carregar dados de Segurança Pública
-DF_SEGURANCA = DataLoader.loadXLSX(DATA_PATH, 'SEGURANCA_PUBLICA')
+# DF_SEGURANCA = DataLoader.loadXLSX(DATA_PATH, 'SEGURANCA_PUBLICA')
+
+DF_SEGURANCA = DataLoader.loadSHP(DATA_PATH, 'RS_CAXIASDOSUL_PTN_SEG_PUB')
+DF_SEGURANCA.rename(
+    columns={
+        'SP_Data_Fa': 'Data Fato',
+        'SP_Dia_Sem': 'Data Fato',
+        'SP_Dia_Sem': 'Dia Semana Fato', 
+        'SP_Hora_Fa': 'Hora Fato', 
+        'SP_Desc_Fa': 'Desc Fato', 
+        'SP_Tipo_Fa': 'Tipo Fato',
+        'SP_Flagran': 'Flagrante',
+        'SP_Enderec': 'Endereco', 
+        'SP_Nro_End': 'Nro Endereco', 
+        'SP_Tipo_Lo': 'Tipo Local', 
+        'SP_Bairro': 'Bairro',
+        'SP_Municip': 'Municipio'
+    },
+    inplace=True
+)
+DF_SEGURANCA.drop(
+    columns=['Status', 'Score', 'SP_DAY', 'SP_MONTH', 'SP_YEAR', 'SP_HOUR', 'SP_MIN', 
+             'SP_PERIOD', 'SP_WEEKDAY', 'SP_CLASS'], inplace=True)
+
+DF_SEGURANCA['Data Fato'] = pd.to_numeric(DF_SEGURANCA['Data Fato'], errors='coerce')
+DF_SEGURANCA = DF_SEGURANCA.dropna(subset=['Data Fato'])
+DF_SEGURANCA['Data Fato'] = pd.to_datetime(DF_SEGURANCA['Data Fato'], origin='1899-12-30', unit='D')
+DF_SEGURANCA = DF_SEGURANCA.to_crs(crs="EPSG:4326")
+
+DF_SEGURANCA = gpd.GeoDataFrame(DF_SEGURANCA, geometry='geometry')
+DF_SEGURANCA['LON'] = DF_SEGURANCA.geometry.x
+DF_SEGURANCA['LAT'] = DF_SEGURANCA.geometry.y
 
 # Carregar dados de Satisfação da População
 DF_SATISFACAO = DataLoader.loadXLSX(DATA_PATH, 'SATISFACAO')
@@ -603,6 +665,7 @@ DF_SEGURANCA['Bairro'] = DF_SEGURANCA['Bairro'].apply(lambda x: unidecode(str(x)
 DF_SEGURANCA['Municipio'] = DF_SEGURANCA['Municipio'].apply(lambda x: unidecode(str(x)).upper())
 
 # Determinar formato do campo data
+# DF_SEGURANCA['datafato'] = pd.to_datetime(DF_SEGURANCA['Data Fato'], origin='1899-12-30', unit='D')
 DF_SEGURANCA['datafato'] = DF_SEGURANCA['Data Fato'].dt.strftime('%Y-%m-%d')
 DF_SEGURANCA['horafato'] = DF_SEGURANCA['Hora Fato'].astype(str)
 
@@ -685,9 +748,9 @@ st.markdown(
     """
     <style>
     .header-bar {
-        background-color: #222222;
+        background-color: #CCCCCC;
         padding: 10px;
-        color: white;
+        color: #000000;
         text-align: center;
         font-size: 24px;
         font-weight: bold;
@@ -699,7 +762,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-st.caption(body="<div style='text-align:center;font-weight:bold;font-size:14pt;color:#FFF;padding:10px;'>FILTROS<div>", unsafe_allow_html=True)
+st.caption(body="<div style='text-align:center;font-weight:bold;font-size:14pt;color:#000;padding:10px;'>FILTROS<div>", unsafe_allow_html=True)
 
 chartsFilterCols = st.columns(2)
 with chartsFilterCols[0]:
@@ -714,7 +777,7 @@ with chartsFilterCols[1]:
 
 datesFilterCols = st.columns(2)
 with datesFilterCols[0]:
-    st.caption(body="<div style='text-align:center;font-weight:bold;font-size:12pt;color:#FFF;padding:5px;'>DATA E HORA INICIAL<div>", unsafe_allow_html=True)
+    st.caption(body="<div style='text-align:center;font-weight:bold;font-size:12pt;color:#000;padding:5px;'>DATA E HORA INICIAL<div>", unsafe_allow_html=True)
     
     datesFromCols = st.columns(3)
     with datesFromCols[0]:
@@ -751,7 +814,7 @@ with datesFilterCols[0]:
             value=np.array(FILTROS['MINUTO']).min())
 
 with datesFilterCols[1]:
-    st.caption(body="<div style='text-align:center;font-weight:bold;font-size:12pt;color:#FFF;padding:5px;'>DATA E HORA FINAL<div>", unsafe_allow_html=True)
+    st.caption(body="<div style='text-align:center;font-weight:bold;font-size:12pt;color:#000;padding:5px;'>DATA E HORA FINAL<div>", unsafe_allow_html=True)
     
     datesFromCols = st.columns(3)
     with datesFromCols[0]:
@@ -834,7 +897,6 @@ DF_SATISFACAO_GRP = DF_SATISFACAO.groupby(['BAIRRO']).agg({
   'SAT14': 'sum',
   'SAT15': 'sum',
 }).reset_index()
-DF_SATISFACAO_GRP.head(5)
 
 DF_SETORES_GRP = DF_SETORES_BAIRROS.groupby(['BAIRRO']).agg({
   'v0001': 'sum',
@@ -845,7 +907,6 @@ DF_SETORES_GRP = DF_SETORES_BAIRROS.groupby(['BAIRRO']).agg({
   'v0006': 'sum',
   'v0007': 'sum',
 }).reset_index()
-DF_SETORES_GRP.head(5)
 
 DF_DATA = DF_AMV_FILTERED.copy()
 DF_DATA = DF_DATA.merge(DF_SEGURANCA_GRP, how='left', left_on='BAIRRO', right_on='BAIRRO')
@@ -897,17 +958,17 @@ TVOC_CUTOFF_75 = (TVOC_MIN + 0.75 * (TVOC_MAX - TVOC_MIN)) if (FILTRO_BAIRRO != 
 st.markdown(
     """
     <style>
-    .title-radar {
-        background-color: #222222;
+    .title-chart-indicator {
+        background-color: #CCCCCC;
         padding: 5px;
-        color: #FFFFFF;
+        color: #000000;
         text-align: center;
         font-size: 16px;
         font-weight: bold;
         margin-bottom: 5px;
     }
     </style>
-    <div class="title-radar">GRÁFICO DE INDICADORES</div>
+    <div class="title-chart-indicator">GRÁFICO DE INDICADORES</div>
     """,
     unsafe_allow_html=True
 )
@@ -927,7 +988,7 @@ chartTemperature = ChartUtils.createGauge(
     max=TEMPERATURE_MAX,
     chartColor=f"{chartTemperatureColor}",
     shadownColor=f"{chartTemperatureShadown}",
-    theme='dark'
+    # theme='dark'
 )
 indicatorCharts.append(chartTemperature)
 
@@ -944,7 +1005,7 @@ chartUmidade = ChartUtils.createGauge(
     max=UMIDADE_MAX,
     chartColor=f"{chartUmidadeColor}",
     shadownColor=f"{chartUmidadeShadown}",
-    theme='dark'
+    # theme='dark'
 )
 indicatorCharts.append(chartUmidade)
 
@@ -961,7 +1022,7 @@ chartLuminosidade = ChartUtils.createGauge(
     max=LUMINOSIDADE_MAX,
     chartColor=f"{chartLuminosidadeColor}",
     shadownColor=f"{chartLuminosidadeShadown}",
-    theme='dark'
+    # theme='dark'
 )
 indicatorCharts.append(chartLuminosidade)
 
@@ -978,7 +1039,7 @@ chartRuido = ChartUtils.createGauge(
     max=RUIDO_MAX,
     chartColor=f"{chartRuidoColor}",
     shadownColor=f"{chartRuidoShadown}",
-    theme='dark'
+    # theme='dark'
 )
 indicatorCharts.append(chartRuido)
 
@@ -995,7 +1056,7 @@ chartCO2 = ChartUtils.createGauge(
     max=CO2_MAX,
     chartColor=f"{chartCO2Color}",
     shadownColor=f"{chartCO2Shadown}",
-    theme='dark'
+    # theme='dark'
 )
 indicatorCharts.append(chartCO2)
 
@@ -1012,7 +1073,7 @@ chartTVOC = ChartUtils.createGauge(
     max=TVOC_MAX,
     chartColor=f"{chartTVOCColor}",
     shadownColor=f"{chartTVOCShadown}",
-    theme='dark'
+    # theme='dark'
 )
 indicatorCharts.append(chartTVOC)
 
@@ -1170,7 +1231,7 @@ chartMonitoramentoBairro = ChartUtils.createRadar(
     dataframe=DF_AMV_RADAR_PLOT,
     fieldClasses=PROPS_GROUP_RADAR,
     colors=px.colors.qualitative.Light24,
-    theme='dark',
+    # theme='dark',
 )
 
 chartCols = st.columns(1)
@@ -1191,9 +1252,9 @@ st.markdown(
     """
     <style>
     .title-radar {
-        background-color: #222222;
+        background-color: #CCCCCC;
         padding: 5px;
-        color: #FFFFFF;
+        color: #000000;
         text-align: center;
         font-size: 16px;
         font-weight: bold;
@@ -1205,14 +1266,14 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-mapIndicators = MapUtils.createMap(INITIAL_COORDS, 12, BASEMAPS[6], False, True, False, True)
+mapIndicators = MapUtils.createMap(INITIAL_COORDS, 12, BASEMAPS[3], False, True, False, True)
 
-# lyrBairrosPLGStyle = {
-#     'fillColor': '#CCCCCC',    # Sem preenchimento
-#     'color': '#CCCCCC',     # Cor da borda cinza
-#     'weight': 1.5,          # Espessura da borda
-#     'fillOpacity': 0.01     # Transparência do preenchimento
-# }
+lyrBairrosPLGStyle = {
+    'fillColor': '#CCCCCC',    # Sem preenchimento
+    'color': '#888',           # Cor da borda cinza
+    'weight': 2,               # Espessura da borda
+    'fillOpacity': 0.01        # Transparência do preenchimento
+}
 
 # lyrBairrosPTNStyle = {
 #     'icon': 'circle',       # Padrão folium Icon
@@ -1220,12 +1281,12 @@ mapIndicators = MapUtils.createMap(INITIAL_COORDS, 12, BASEMAPS[6], False, True,
 #     'fillOpacity': 0.5      # Opacidade do ponto
 # }
 
-lyrLabelStyle = {
-    'fillColor': '#FFFFFF',     # Sem preenchimento
-    'color': '#FFFFFF',         # Cor da borda cinza
-    'weight': 0,                # Espessura da borda
-    'fillOpacity': 0.01         # Transparência do preenchimento
-}
+# lyrLabelStyle = {
+#     'fillColor': '#FFFFFF',     # Sem preenchimento
+#     'color': '#FFFFFF',         # Cor da borda cinza
+#     'weight': 0,                # Espessura da borda
+#     'fillOpacity': 0.01         # Transparência do preenchimento
+# }
 
 if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR != []):
     DF_BAIRROS_LYR = DF_BAIRROS_PLG[DF_BAIRROS_PLG['nome'].isin(FILTRO_BAIRRO)]
@@ -1235,58 +1296,74 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
     DF_BAIRROS_LYR['CENTROID'] = DF_BAIRROS_LYR.centroid
     DF_BAIRROS_LYR['LAT'] = DF_BAIRROS_LYR['CENTROID'].map(lambda c: c.y)
     DF_BAIRROS_LYR['LON'] = DF_BAIRROS_LYR['CENTROID'].map(lambda c: c.x)
+    DF_BAIRROS_LYR.drop(columns=['CENTROID'], inplace=True)
+    
+    MapUtils.addLayer(
+        geoDF=DF_BAIRROS_LYR,
+        styleConfig=lyrBairrosPLGStyle,
+        layerName='Bairros'
+    ).add_to(mapIndicators)
+    
+    DF_SEG_LYR = DF_SEG_FILTERED.copy()
+    DF_SEG_LYR['GEOID'] = DF_SEG_LYR.index.astype(str)
+    crimeLocations = list(zip(DF_SEG_LYR['LAT'],DF_SEG_LYR['LON']))
+    MarkerCluster(
+        locations=crimeLocations,
+        name='Segurança Pública',
+        popups=DF_SEG_LYR['BAIRRO'].tolist()
+    ).add_to(mapIndicators)
     
     # Rótulos para Nome de Bairros
-    for i, row in DF_BAIRROS_LYR.iterrows():
-        folium.map.Marker(
-            location=[row['LAT'],row['LON']],
-            icon=DivIcon(
-                # icon_size=(100,24),
-                # icon_anchor=(25,0),
-                html=f'<div style="font-size:8pt;color:white;font-weight:bold;text-shadow: #000 1px 0 10px;">{row['BAIRRO']}</div>'
-            )
-        ).add_to(mapIndicators)
+    # for i, row in DF_BAIRROS_LYR.iterrows():
+    #     folium.map.Marker(
+    #         location=[row['LAT'],row['LON']],
+    #         icon=DivIcon(
+    #             # icon_size=(100,24),
+    #             # icon_anchor=(25,0),
+    #             html=f'<div style="font-size:8pt;color:white;font-weight:bold;text-shadow: #000 1px 0 10px;">{row['BAIRRO']}</div>'
+    #         )
+    #     ).add_to(mapIndicators)
             
     # --- TEMPERATURA ---
-    if('TEMPERATURA' in PROPS_VALUE_RADAR):
-        LYR_BAIRROS_TEMPERATURA = folium.Choropleth(
-            geo_data=DF_BAIRROS_LYR[['geometry','GEOID','BAIRRO','TEMPERATURA']],
-            data=DF_BAIRROS_LYR,
-            name='Temperatura por Bairro',
-            columns=['GEOID','TEMPERATURA'],
-            key_on='feature.id',
-            fill_color='Spectral',
-            fill_opacity=0.75,
-            line_opacity=0.0,
-            line_color='white', 
-            line_weight=0,
-            highlight=True, 
-            smooth_factor=1.0,
-            legend_name='Temperatura por Bairro',
-            control=True,
-            bins=10,
-            # bins=[0, 5, 10, 15, 20, 25, 30, 50, 75, 100],
-        ).add_to(mapIndicators)
+    # if('TEMPERATURA' in PROPS_VALUE_RADAR):
+    #     LYR_BAIRROS_TEMPERATURA = folium.Choropleth(
+    #         geo_data=DF_BAIRROS_LYR[['geometry','GEOID','BAIRRO','TEMPERATURA']],
+    #         data=DF_BAIRROS_LYR,
+    #         name='Temperatura por Bairro',
+    #         columns=['GEOID','TEMPERATURA'],
+    #         key_on='feature.id',
+    #         fill_color='Spectral',
+    #         fill_opacity=0.75,
+    #         line_opacity=0.0,
+    #         line_color='white', 
+    #         line_weight=0,
+    #         highlight=True, 
+    #         smooth_factor=1.0,
+    #         legend_name='Temperatura por Bairro',
+    #         control=True,
+    #         bins=10,
+    #         # bins=[0, 5, 10, 15, 20, 25, 30, 50, 75, 100],
+    #     ).add_to(mapIndicators)
         
-    if('UMIDADE' in PROPS_VALUE_RADAR):
-        LYR_BAIRROS_TEMPERATURA = folium.Choropleth(
-            geo_data=DF_BAIRROS_LYR[['geometry','GEOID','BAIRRO','UMIDADE']],
-            data=DF_BAIRROS_LYR,
-            name='Umidade por Bairro',
-            columns=['GEOID','UMIDADE'],
-            key_on='feature.id',
-            fill_color='Spectral',
-            fill_opacity=0.75,
-            line_opacity=0.0,
-            line_color='white', 
-            line_weight=0,
-            highlight=True, 
-            smooth_factor=1.0,
-            legend_name='Umidade por Bairro',
-            control=True,
-            bins=10,
-            # bins=[0, 5, 10, 15, 20, 25, 30, 50, 75, 100],
-        ).add_to(mapIndicators)
+    # if('UMIDADE' in PROPS_VALUE_RADAR):
+    #     LYR_BAIRROS_TEMPERATURA = folium.Choropleth(
+    #         geo_data=DF_BAIRROS_LYR[['geometry','GEOID','BAIRRO','UMIDADE']],
+    #         data=DF_BAIRROS_LYR,
+    #         name='Umidade por Bairro',
+    #         columns=['GEOID','UMIDADE'],
+    #         key_on='feature.id',
+    #         fill_color='Spectral',
+    #         fill_opacity=0.75,
+    #         line_opacity=0.0,
+    #         line_color='white', 
+    #         line_weight=0,
+    #         highlight=True, 
+    #         smooth_factor=1.0,
+    #         legend_name='Umidade por Bairro',
+    #         control=True,
+    #         bins=10,
+    #         # bins=[0, 5, 10, 15, 20, 25, 30, 50, 75, 100],
+    #     ).add_to(mapIndicators)
         
     folium.FitOverlays().add_to(mapIndicators)
     folium.LayerControl().add_to(mapIndicators)
