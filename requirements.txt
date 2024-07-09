@@ -63,3 +63,4 @@ watchdog==4.0.1
 xyzservices==2024.6.0
 streamlit_folium==0.6.13
 jenkspy==0.4.1
+branca==0.7.2
