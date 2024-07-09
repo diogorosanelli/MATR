@@ -1353,76 +1353,151 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
     symbolClasses = 5
     valuesSYMBOLS = {
         'Temperatura': {
-            'color': '#cf0638',
-            'fill': False,
-            'weight': 2,
-            'opacity': 0,
-            'sizes': [4, 8, 12, 16, 24]
+            'type': ['PNT','PLG'],
+            'PNT': {
+                'color': '#ff006f',
+                'fill': True,
+                'weight': 0,
+                'opacity': 0.75,
+                'sizes': [4, 8, 12, 16, 24]
+            }
         },
         'Umidade': {
-            'color': '#0a996f',
-            'fill': False,
-            'weight': 2,
-            'opacity': 0,
-            'sizes': [4, 8, 12, 16, 24]
+            'type': ['PNT','PLG'],
+            'PNT': {
+                'color': '#40c0cb',
+                'fill': False,
+                'weight': 4,
+                'opacity': 0,
+                'sizes': [4, 8, 12, 16, 24]
+            }
         },
         'Luminosidade': {
-            'color': '#fecd23',
-            'fill': True,
-            'weight': 0,
-            'opacity': 0.75,
-            'sizes': [4, 8, 12, 16, 24]
+            'type': ['PNT','PLG'],
+            'PNT': {
+                'color': '#e7d84b',
+                'fill': True,
+                'weight': 0,
+                'opacity': 0.75,
+                'sizes': [4, 8, 12, 16, 24]
+            }
         },
     }
     for PROP in PROPS_VALUE_RADAR:
         if (PROP == COLS_VALUE_RADAR[0]):
             # ===== TEMPERATURA =====
-            temperaturaGRPLYR = folium.FeatureGroup(name='Temperatura')
-            LYR_BAIRROS = DF_BAIRROS_LYR[['GEOID','geometry','BAIRRO','TEMPERATURA','LAT','LON']].copy()
-            LYR_BAIRROS['SYMBOL_CLASS'] = pd.cut(LYR_BAIRROS['TEMPERATURA'], bins=symbolClasses, labels=np.arange(1, symbolClasses+1))
-            for idx, row in LYR_BAIRROS.iterrows():
-                folium.CircleMarker(
-                    location=[row['LAT'], row['LON']],
-                    radius=valuesSYMBOLS['Temperatura']['sizes'][int(row['SYMBOL_CLASS']) - 1],
-                    color=valuesSYMBOLS['Temperatura']['color'],
-                    weight=valuesSYMBOLS['Temperatura']['weight'],
-                    fill=valuesSYMBOLS['Temperatura']['fill'],
-                    fill_color=valuesSYMBOLS['Temperatura']['color'],
-                    fill_opacity=valuesSYMBOLS['Temperatura']['opacity'],
-                ).add_to(temperaturaGRPLYR)
-            temperaturaGRPLYR.add_to(mapIndicators)
-        if (PROP == COLS_VALUE_RADAR[1]):
+            if ('PNT' in valuesSYMBOLS['Temperatura']['type']):
+                temperaturaGRPLYR = folium.FeatureGroup(name='Temperatura (Ponto)')
+                LYR_BAIRROS = DF_BAIRROS_LYR[['GEOID','geometry','BAIRRO','TEMPERATURA','LAT','LON']].copy()
+                LYR_BAIRROS['SYMBOL_CLASS'] = pd.cut(LYR_BAIRROS['TEMPERATURA'], bins=symbolClasses, labels=np.arange(1, symbolClasses+1))
+                for idx, row in LYR_BAIRROS.iterrows():
+                    folium.CircleMarker(
+                        location=[row['LAT'], row['LON']],
+                        radius=valuesSYMBOLS['Temperatura']['PNT']['sizes'][int(row['SYMBOL_CLASS']) - 1],
+                        color=valuesSYMBOLS['Temperatura']['PNT']['color'],
+                        weight=valuesSYMBOLS['Temperatura']['PNT']['weight'],
+                        fill=valuesSYMBOLS['Temperatura']['PNT']['fill'],
+                        fill_color=valuesSYMBOLS['Temperatura']['PNT']['color'],
+                        fill_opacity=valuesSYMBOLS['Temperatura']['PNT']['opacity'],
+                    ).add_to(temperaturaGRPLYR)
+                temperaturaGRPLYR.show=False
+                temperaturaGRPLYR.add_to(mapIndicators)
+            if ('PLG' in valuesSYMBOLS['Temperatura']['type']):
+                folium.Choropleth(
+                    geo_data=DF_BAIRROS_LYR[['geometry','GEOID','BAIRRO','TEMPERATURA']],
+                    data=DF_BAIRROS_LYR,
+                    name='Temperatura (Polígono)',
+                    show=False,
+                    columns=['GEOID','TEMPERATURA'],
+                    key_on='feature.id',
+                    fill_color='YlOrRd',
+                    fill_opacity=0.5,
+                    line_opacity=0.0,
+                    line_color='white', 
+                    line_weight=0,
+                    highlight=True, 
+                    smooth_factor=1.0,
+                    legend_name='Temperatura',
+                    control=True,
+                    bins=10,
+                    # bins=[0, 5, 10, 15, 20, 25, 30, 50, 75, 100],
+                ).add_to(mapIndicators, index=999)
+            
             # ===== UMIDADE =====
-            umidadeGRPLYR = folium.FeatureGroup(name='Umidade')
-            LYR_BAIRROS = DF_BAIRROS_LYR[['GEOID','geometry','BAIRRO','UMIDADE','LAT','LON']].copy()
-            LYR_BAIRROS['SYMBOL_CLASS'] = pd.cut(LYR_BAIRROS['UMIDADE'], bins=symbolClasses, labels=np.arange(1, symbolClasses+1))
-            for idx, row in LYR_BAIRROS.iterrows():
-                folium.CircleMarker(
-                    location=[row['LAT'], row['LON']],
-                    radius=valuesSYMBOLS['Umidade']['sizes'][int(row['SYMBOL_CLASS']) - 1],
-                    color=valuesSYMBOLS['Umidade']['color'],
-                    weight=valuesSYMBOLS['Umidade']['weight'],
-                    fill=valuesSYMBOLS['Umidade']['fill'],
-                    fill_color=valuesSYMBOLS['Umidade']['color'],
-                    fill_opacity=valuesSYMBOLS['Umidade']['opacity'],
-                ).add_to(umidadeGRPLYR)
-            umidadeGRPLYR.add_to(mapIndicators)
-        if (PROP == COLS_VALUE_RADAR[2]):
+            if ('PNT' in valuesSYMBOLS['Umidade']['type']):
+                umidadeGRPLYR = folium.FeatureGroup(name='Umidade (Ponto)')
+                LYR_BAIRROS = DF_BAIRROS_LYR[['GEOID','geometry','BAIRRO','UMIDADE','LAT','LON']].copy()
+                LYR_BAIRROS['SYMBOL_CLASS'] = pd.cut(LYR_BAIRROS['UMIDADE'], bins=symbolClasses, labels=np.arange(1, symbolClasses+1))
+                for idx, row in LYR_BAIRROS.iterrows():
+                    folium.CircleMarker(
+                        location=[row['LAT'], row['LON']],
+                        radius=valuesSYMBOLS['Umidade']['PNT']['sizes'][int(row['SYMBOL_CLASS']) - 1],
+                        color=valuesSYMBOLS['Umidade']['PNT']['color'],
+                        weight=valuesSYMBOLS['Umidade']['PNT']['weight'],
+                        fill=valuesSYMBOLS['Umidade']['PNT']['fill'],
+                        fill_color=valuesSYMBOLS['Umidade']['PNT']['color'],
+                        fill_opacity=valuesSYMBOLS['Umidade']['PNT']['opacity'],
+                    ).add_to(umidadeGRPLYR)
+                umidadeGRPLYR.show=False
+                umidadeGRPLYR.add_to(mapIndicators)
+            if ('PLG' in valuesSYMBOLS['Umidade']['type']):
+                folium.Choropleth(
+                    geo_data=DF_BAIRROS_LYR[['geometry','GEOID','BAIRRO','UMIDADE']],
+                    data=DF_BAIRROS_LYR,
+                    name='Umidade (Polígono)',
+                    show=False,
+                    columns=['GEOID','UMIDADE'],
+                    key_on='feature.id',
+                    fill_color='GnBu',
+                    fill_opacity=0.5,
+                    line_opacity=0.0,
+                    line_color='white', 
+                    line_weight=0,
+                    highlight=True, 
+                    smooth_factor=1.0,
+                    legend_name='Umidade',
+                    control=True,
+                    bins=10,
+                    # bins=[0, 5, 10, 15, 20, 25, 30, 50, 75, 100],
+                ).add_to(mapIndicators, index=999)
+            
             # ===== LUMINOSIDADE =====
-            luminosidadeGRPLYR = folium.FeatureGroup(name='Luminosidade')
-            LYR_BAIRROS = DF_BAIRROS_LYR[['GEOID','geometry','BAIRRO','LUMINOSIDADE','LAT','LON']].copy()
-            LYR_BAIRROS['SYMBOL_CLASS'] = pd.cut(LYR_BAIRROS['LUMINOSIDADE'], bins=symbolClasses, labels=np.arange(1, symbolClasses+1))
-            for idx, row in LYR_BAIRROS.iterrows():
-                folium.CircleMarker(
-                    location=[row['LAT'], row['LON']],
-                    radius=valuesSYMBOLS['Luminosidade']['sizes'][int(row['SYMBOL_CLASS']) - 1],
-                    color=valuesSYMBOLS['Luminosidade']['color'],
-                    weight=valuesSYMBOLS['Luminosidade']['weight'],
-                    fill=valuesSYMBOLS['Luminosidade']['fill'],
-                    fill_color=valuesSYMBOLS['Luminosidade']['color'],
-                    fill_opacity=valuesSYMBOLS['Luminosidade']['opacity'],
-                ).add_to(luminosidadeGRPLYR)
-            luminosidadeGRPLYR.add_to(mapIndicators)
+            if ('PNT' in valuesSYMBOLS['Luminosidade']['type']):
+                luminosidadeGRPLYR = folium.FeatureGroup(name='Luminosidade (Ponto)')
+                LYR_BAIRROS = DF_BAIRROS_LYR[['GEOID','geometry','BAIRRO','LUMINOSIDADE','LAT','LON']].copy()
+                LYR_BAIRROS['SYMBOL_CLASS'] = pd.cut(LYR_BAIRROS['LUMINOSIDADE'], bins=symbolClasses, labels=np.arange(1, symbolClasses+1))
+                for idx, row in LYR_BAIRROS.iterrows():
+                    folium.CircleMarker(
+                        location=[row['LAT'], row['LON']],
+                        radius=valuesSYMBOLS['Luminosidade']['PNT']['sizes'][int(row['SYMBOL_CLASS']) - 1],
+                        color=valuesSYMBOLS['Luminosidade']['PNT']['color'],
+                        weight=valuesSYMBOLS['Luminosidade']['PNT']['weight'],
+                        fill=valuesSYMBOLS['Luminosidade']['PNT']['fill'],
+                        fill_color=valuesSYMBOLS['Luminosidade']['PNT']['color'],
+                        fill_opacity=valuesSYMBOLS['Luminosidade']['PNT']['opacity'],
+                    ).add_to(luminosidadeGRPLYR)
+                luminosidadeGRPLYR.show=False
+                luminosidadeGRPLYR.add_to(mapIndicators)
+            if ('PLG' in valuesSYMBOLS['Luminosidade']['type']):
+                folium.Choropleth(
+                    geo_data=DF_BAIRROS_LYR[['geometry','GEOID','BAIRRO','LUMINOSIDADE']],
+                    data=DF_BAIRROS_LYR,
+                    name='Luminosidade (Polígono)',
+                    show=False,
+                    columns=['GEOID','LUMINOSIDADE'],
+                    key_on='feature.id',
+                    fill_color='Oranges',
+                    fill_opacity=0.5,
+                    line_opacity=0.0,
+                    line_color='white', 
+                    line_weight=0,
+                    highlight=True, 
+                    smooth_factor=1.0,
+                    legend_name='Luminosidade',
+                    control=True,
+                    bins=10,
+                    # bins=[0, 5, 10, 15, 20, 25, 30, 50, 75, 100],
+                ).add_to(mapIndicators, index=999)
         
     folium.FitOverlays().add_to(mapIndicators)
     folium.LayerControl().add_to(mapIndicators)
