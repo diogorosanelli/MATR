@@ -14,6 +14,7 @@ import plotly.graph_objs as go
 import plotly.io as pio
 import plotly.express as px
 import streamlit as st
+import matplotlib.colors as mcolors
 
 from shapely.geometry import Point
 from matplotlib import pyplot as plt
@@ -1382,9 +1383,20 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                 'sizes': [4, 8, 12, 16, 24]
             }
         },
+        'Ruido': {
+            'type': ['PNT','PLG'],
+            'PNT': {
+                'color': '#e7d84b',
+                'fill': True,
+                'weight': 0,
+                'opacity': 0.75,
+                'sizes': [4, 8, 12, 16, 24]
+            }
+        },
     }
     for PROP in PROPS_VALUE_RADAR:
         if (PROP == COLS_VALUE_RADAR[0]):
+            NRO_CLASSES = 10
             # ===== TEMPERATURA =====
             if ('PNT' in valuesSYMBOLS['Temperatura']['type']):
                 temperaturaGRPLYR = folium.FeatureGroup(name='Temperatura (Ponto)')
@@ -1441,24 +1453,26 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                 umidadeGRPLYR.show=False
                 umidadeGRPLYR.add_to(mapIndicators)
             if ('PLG' in valuesSYMBOLS['Umidade']['type']):
-                folium.Choropleth(
-                    geo_data=DF_BAIRROS_LYR[['geometry','GEOID','BAIRRO','UMIDADE']],
-                    data=DF_BAIRROS_LYR,
-                    name='Umidade (Polígono)',
-                    show=False,
-                    columns=['GEOID','UMIDADE'],
-                    key_on='feature.id',
-                    fill_color='GnBu',
-                    fill_opacity=0.5,
-                    line_opacity=0.0,
-                    line_color='white', 
-                    line_weight=0,
-                    highlight=True, 
-                    smooth_factor=1.0,
-                    legend_name='Umidade',
-                    control=True,
-                    bins=10,
-                    # bins=[0, 5, 10, 15, 20, 25, 30, 50, 75, 100],
+                class_bins = np.linspace(
+                    DF_BAIRROS_LYR['UMIDADE'].min(), 
+                    DF_BAIRROS_LYR['UMIDADE'].max(), 
+                    NRO_CLASSES + 1)
+                cmap = mcolors.LinearSegmentedColormap.from_list('custom', ['#fff95b', '#ff930f'], N=NRO_CLASSES)
+                norm = mcolors.BoundaryNorm(class_bins, cmap.N)
+                folium.GeoJson(
+                    DF_BAIRROS_LYR[['geometry','GEOID','BAIRRO','UMIDADE']],
+                    style_function = lambda feature: {
+                        'fillColor': mcolors.to_hex(cmap(norm(feature['properties']['UMIDADE']))),
+                        'color': 'black',
+                        'weight': 0,
+                        'fillOpacity': 0.7,
+                    },
+                    tooltip=folium.features.GeoJsonTooltip(
+                        fields=['BAIRRO','UMIDADE'],
+                        aliases=['Bairro: ','Umidade:']
+                    ),
+                    name="Umidade",
+                    visible=False
                 ).add_to(mapIndicators, index=999)
             
             # ===== LUMINOSIDADE =====
@@ -1479,24 +1493,66 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                 luminosidadeGRPLYR.show=False
                 luminosidadeGRPLYR.add_to(mapIndicators)
             if ('PLG' in valuesSYMBOLS['Luminosidade']['type']):
-                folium.Choropleth(
-                    geo_data=DF_BAIRROS_LYR[['geometry','GEOID','BAIRRO','LUMINOSIDADE']],
-                    data=DF_BAIRROS_LYR,
-                    name='Luminosidade (Polígono)',
-                    show=False,
-                    columns=['GEOID','LUMINOSIDADE'],
-                    key_on='feature.id',
-                    fill_color='Oranges',
-                    fill_opacity=0.5,
-                    line_opacity=0.0,
-                    line_color='white', 
-                    line_weight=0,
-                    highlight=True, 
-                    smooth_factor=1.0,
-                    legend_name='Luminosidade',
-                    control=True,
-                    bins=10,
-                    # bins=[0, 5, 10, 15, 20, 25, 30, 50, 75, 100],
+                CLASS_BINS_LUMINOSIDADE = np.linspace(
+                    DF_BAIRROS_LYR['LUMINOSIDADE'].min(), 
+                    DF_BAIRROS_LYR['LUMINOSIDADE'].max(), 
+                    NRO_CLASSES + 1)
+                cmap = mcolors.LinearSegmentedColormap.from_list('custom', ['#fff95b', '#ff930f'], N=NRO_CLASSES)
+                norm = mcolors.BoundaryNorm(CLASS_BINS_LUMINOSIDADE, cmap.N)
+                folium.GeoJson(
+                    DF_BAIRROS_LYR[['geometry','GEOID','BAIRRO','LUMINOSIDADE']],
+                    style_function = lambda feature: {
+                        'fillColor': mcolors.to_hex(cmap(norm(feature['properties']['LUMINOSIDADE']))),
+                        'color': 'black',
+                        'weight': 0,
+                        'fillOpacity': 0.7,
+                    },
+                    tooltip=folium.features.GeoJsonTooltip(
+                        fields=['BAIRRO','LUMINOSIDADE'],
+                        aliases=['Bairro: ','Luminosidade:']
+                    ),
+                    name="Luminosidade",
+                    visible=False
+                ).add_to(mapIndicators, index=999)
+                
+            # ===== RUIDO =====
+            if ('PNT' in valuesSYMBOLS['Ruido']['type']):
+                luminosidadeGRPLYR = folium.FeatureGroup(name='Ruido (Ponto)')
+                LYR_BAIRROS = DF_BAIRROS_LYR[['GEOID','geometry','BAIRRO','LUMINOSIDADE','LAT','LON']].copy()
+                LYR_BAIRROS['SYMBOL_CLASS'] = pd.cut(LYR_BAIRROS['LUMINOSIDADE'], bins=symbolClasses, labels=np.arange(1, symbolClasses+1))
+                for idx, row in LYR_BAIRROS.iterrows():
+                    folium.CircleMarker(
+                        location=[row['LAT'], row['LON']],
+                        radius=valuesSYMBOLS['Ruido']['PNT']['sizes'][int(row['SYMBOL_CLASS']) - 1],
+                        color=valuesSYMBOLS['Ruido']['PNT']['color'],
+                        weight=valuesSYMBOLS['Ruido']['PNT']['weight'],
+                        fill=valuesSYMBOLS['Ruido']['PNT']['fill'],
+                        fill_color=valuesSYMBOLS['Ruido']['PNT']['color'],
+                        fill_opacity=valuesSYMBOLS['Ruido']['PNT']['opacity'],
+                    ).add_to(luminosidadeGRPLYR)
+                luminosidadeGRPLYR.show=False
+                luminosidadeGRPLYR.add_to(mapIndicators)
+            if ('PLG' in valuesSYMBOLS['Ruido']['type']):
+                CLASS_BINS_RUIDO = np.linspace(
+                    DF_BAIRROS_LYR['RUIDO'].min(), 
+                    DF_BAIRROS_LYR['RUIDO'].max(), 
+                    NRO_CLASSES + 1)
+                CMAP_RUIDO = mcolors.LinearSegmentedColormap.from_list('custom', ['#9bb2e5', '#698cbf'], N=NRO_CLASSES)
+                NORM_RUIDO = mcolors.BoundaryNorm(CLASS_BINS_RUIDO, CMAP_RUIDO.N)
+                folium.GeoJson(
+                    DF_BAIRROS_LYR[['geometry','GEOID','BAIRRO','RUIDO']],
+                    style_function = lambda feature: {
+                        'fillColor': mcolors.to_hex(CMAP_RUIDO(NORM_RUIDO(feature['properties']['RUIDO']))),
+                        'color': 'black',
+                        'weight': 0,
+                        'fillOpacity': 0.7,
+                    },
+                    tooltip=folium.features.GeoJsonTooltip(
+                        fields=['BAIRRO','RUIDO'],
+                        aliases=['Bairro: ','Ruído:']
+                    ),
+                    name="Ruído",
+                    visible=False
                 ).add_to(mapIndicators, index=999)
         
     folium.FitOverlays().add_to(mapIndicators)
