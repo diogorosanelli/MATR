@@ -35,6 +35,8 @@ from branca import colormap as cm
 BASE_PATH = '/mount/src/matr/'                       # PRD
 DATA_PATH = f'{BASE_PATH}/data'
 
+NRO_CLASSES = 10
+
 # Configurações de Mapa
 USE_MAP = False
 INITIAL_COORDS = [-51.1794, -29.1678] # Caxias do Sul
@@ -1396,7 +1398,6 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
     }
     for PROP in PROPS_VALUE_RADAR:
         if (PROP == COLS_VALUE_RADAR[0]):
-            NRO_CLASSES = 10
             # ===== TEMPERATURA =====
             if ('PNT' in valuesSYMBOLS['Temperatura']['type']):
                 temperaturaGRPLYR = folium.FeatureGroup(name='Temperatura (Ponto)')
@@ -1415,24 +1416,30 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                 temperaturaGRPLYR.show=False
                 temperaturaGRPLYR.add_to(mapIndicators)
             if ('PLG' in valuesSYMBOLS['Temperatura']['type']):
-                folium.Choropleth(
-                    geo_data=DF_BAIRROS_LYR[['geometry','GEOID','BAIRRO','TEMPERATURA']],
-                    data=DF_BAIRROS_LYR,
-                    name='Temperatura (Polígono)',
+                CLASS_BINS_TEMPERATURA = np.linspace(
+                    DF_BAIRROS_LYR['TEMPERATURA'].min(), 
+                    DF_BAIRROS_LYR['TEMPERATURA'].max(), 
+                    NRO_CLASSES + 1)
+                CMAP_TEMPERATURA = mcolors.LinearSegmentedColormap.from_list('custom', ['#f4d444', '#f86ca7'], N=NRO_CLASSES)
+                NORM_TEMPERATURA = mcolors.BoundaryNorm(CLASS_BINS_TEMPERATURA, CMAP_TEMPERATURA.N)
+                folium.GeoJson(
+                    DF_BAIRROS_LYR[['geometry','GEOID','BAIRRO','TEMPERATURA']],
+                    style_function = lambda feature: {
+                        'fillColor': mcolors.to_hex(CMAP_TEMPERATURA(NORM_TEMPERATURA(feature['properties']['TEMPERATURA']))),
+                        'color': 'black',
+                        'weight': 0,
+                        'fillOpacity': 0.7,
+                    },
+                    tooltip=folium.features.GeoJsonTooltip(
+                        fields=['BAIRRO','TEMPERATURA'],
+                        aliases=['Bairro: ','Temperatura:']
+                    ),
+                    popup=folium.GeoJsonPopup(
+                        fields=['BAIRRO','TEMPERATURA'],
+                        aliases=['Bairro: ','Temperatura:']
+                    ),
+                    name="Temperatura",
                     show=False,
-                    columns=['GEOID','TEMPERATURA'],
-                    key_on='feature.id',
-                    fill_color='YlOrRd',
-                    fill_opacity=0.5,
-                    line_opacity=0.0,
-                    line_color='white', 
-                    line_weight=0,
-                    highlight=True, 
-                    smooth_factor=1.0,
-                    legend_name='Temperatura',
-                    control=True,
-                    bins=10,
-                    # bins=[0, 5, 10, 15, 20, 25, 30, 50, 75, 100],
                 ).add_to(mapIndicators, index=999)
             
             # ===== UMIDADE =====
@@ -1453,16 +1460,16 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                 umidadeGRPLYR.show=False
                 umidadeGRPLYR.add_to(mapIndicators)
             if ('PLG' in valuesSYMBOLS['Umidade']['type']):
-                class_bins = np.linspace(
+                CLASS_BINS_UMIDADE = np.linspace(
                     DF_BAIRROS_LYR['UMIDADE'].min(), 
                     DF_BAIRROS_LYR['UMIDADE'].max(), 
                     NRO_CLASSES + 1)
-                cmap = mcolors.LinearSegmentedColormap.from_list('custom', ['#fff95b', '#ff930f'], N=NRO_CLASSES)
-                norm = mcolors.BoundaryNorm(class_bins, cmap.N)
+                CMAP_UMIDADE = mcolors.LinearSegmentedColormap.from_list('custom', ['#00ee6e', '#0c75e6'], N=NRO_CLASSES)
+                NORM_UMIDADE = mcolors.BoundaryNorm(CLASS_BINS_UMIDADE, CMAP_UMIDADE.N)
                 folium.GeoJson(
                     DF_BAIRROS_LYR[['geometry','GEOID','BAIRRO','UMIDADE']],
                     style_function = lambda feature: {
-                        'fillColor': mcolors.to_hex(cmap(norm(feature['properties']['UMIDADE']))),
+                        'fillColor': mcolors.to_hex(CMAP_UMIDADE(NORM_UMIDADE(feature['properties']['UMIDADE']))),
                         'color': 'black',
                         'weight': 0,
                         'fillOpacity': 0.7,
@@ -1471,8 +1478,12 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         fields=['BAIRRO','UMIDADE'],
                         aliases=['Bairro: ','Umidade:']
                     ),
+                    popup=folium.GeoJsonPopup(
+                        fields=['BAIRRO','UMIDADE'],
+                        aliases=['Bairro: ','Umidade:']
+                    ),
                     name="Umidade",
-                    visible=False
+                    show=False,
                 ).add_to(mapIndicators, index=999)
             
             # ===== LUMINOSIDADE =====
@@ -1497,12 +1508,12 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                     DF_BAIRROS_LYR['LUMINOSIDADE'].min(), 
                     DF_BAIRROS_LYR['LUMINOSIDADE'].max(), 
                     NRO_CLASSES + 1)
-                cmap = mcolors.LinearSegmentedColormap.from_list('custom', ['#fff95b', '#ff930f'], N=NRO_CLASSES)
-                norm = mcolors.BoundaryNorm(CLASS_BINS_LUMINOSIDADE, cmap.N)
+                CMAP_LUMINOSIDADE = mcolors.LinearSegmentedColormap.from_list('custom', ['#f7f2ab', '#bda734'], N=NRO_CLASSES)
+                NORM_LUMINOSIDADE = mcolors.BoundaryNorm(CLASS_BINS_LUMINOSIDADE, CMAP_LUMINOSIDADE.N)
                 folium.GeoJson(
                     DF_BAIRROS_LYR[['geometry','GEOID','BAIRRO','LUMINOSIDADE']],
                     style_function = lambda feature: {
-                        'fillColor': mcolors.to_hex(cmap(norm(feature['properties']['LUMINOSIDADE']))),
+                        'fillColor': mcolors.to_hex(CMAP_LUMINOSIDADE(NORM_LUMINOSIDADE(feature['properties']['LUMINOSIDADE']))),
                         'color': 'black',
                         'weight': 0,
                         'fillOpacity': 0.7,
@@ -1511,8 +1522,12 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         fields=['BAIRRO','LUMINOSIDADE'],
                         aliases=['Bairro: ','Luminosidade:']
                     ),
+                    popup=folium.GeoJsonPopup(
+                        fields=['BAIRRO','LUMINOSIDADE'],
+                        aliases=['Bairro: ','Luminosidade:']
+                    ),
                     name="Luminosidade",
-                    visible=False
+                    show=False,
                 ).add_to(mapIndicators, index=999)
                 
             # ===== RUIDO =====
@@ -1537,7 +1552,7 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                     DF_BAIRROS_LYR['RUIDO'].min(), 
                     DF_BAIRROS_LYR['RUIDO'].max(), 
                     NRO_CLASSES + 1)
-                CMAP_RUIDO = mcolors.LinearSegmentedColormap.from_list('custom', ['#9bb2e5', '#698cbf'], N=NRO_CLASSES)
+                CMAP_RUIDO = mcolors.LinearSegmentedColormap.from_list('custom', ['#6d90b9', '#bbc7dc'], N=NRO_CLASSES)
                 NORM_RUIDO = mcolors.BoundaryNorm(CLASS_BINS_RUIDO, CMAP_RUIDO.N)
                 folium.GeoJson(
                     DF_BAIRROS_LYR[['geometry','GEOID','BAIRRO','RUIDO']],
@@ -1551,8 +1566,12 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         fields=['BAIRRO','RUIDO'],
                         aliases=['Bairro: ','Ruído:']
                     ),
+                    popup=folium.GeoJsonPopup(
+                        fields=['BAIRRO','RUIDO'],
+                        aliases=['Bairro: ','Ruído:']
+                    ),
                     name="Ruído",
-                    visible=False
+                    show=False,
                 ).add_to(mapIndicators, index=999)
         
     folium.FitOverlays().add_to(mapIndicators)
