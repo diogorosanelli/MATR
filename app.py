@@ -441,19 +441,28 @@ class ChartUtils:
                 'theta': ['Temperatura', 'Umidade', 'Luminosidade', 'Ruído', 'CO₂', 'ETVOC'],
                 'r': [0, 0, 0, 0, 0, 0]
             })
-            
+        
+        plotDF.rename(
+            columns={
+                f'{fieldClasses}': f'{fieldClasses.title()}',
+                'theta': 'Categoria',
+                'r': 'Valor'
+            },
+            inplace=True
+        )
+        
         fig = px.line_polar(
             plotDF,
-            r='r',
-            theta='theta',
+            r='Valor',
+            theta='Categoria',
             title=title,
-            color=fieldClasses,
+            color=f'{fieldClasses.title()}',
             line_close=True,
             color_discrete_sequence=colors,
             markers=True
         )
         
-        fig.update_traces(line={'width': 5})
+        fig.update_traces(line={'width': 3},fill='toself')
         
         if (theme=='dark'):
             fig.update_layout(
@@ -486,7 +495,7 @@ class ChartUtils:
                 title_x=0.5,
                 title_y=0.95,
                 # showlegend=False,
-                legend_title='LEGENDA',
+                # legend_title='LEGENDA',
                 legend_orientation='h',
                 
                 polar_angularaxis_color='#000',
@@ -1151,16 +1160,6 @@ COLS_VALUE_RADAR = [
 ]
 
 PROPS_GROUP_RADAR = 'BAIRRO'
-# radarPropsCols = st.columns(2)
-# with radarPropsCols[0]:
-    # PROPS_GROUP_RADAR = st.selectbox(
-    #     label='Grupo', 
-    #     options=COLS_GROUP_RADAR, 
-    #     placeholder="Selecione a propriedade de grupo",
-    #     index=0,       
-    # )
-
-# with radarPropsCols[1]:
 PROPS_VALUE_RADAR = st.multiselect(
     label='Variáveis', 
     options=COLS_VALUE_RADAR, 
@@ -1283,19 +1282,6 @@ lyrBairrosPLGStyle = {
     'fillOpacity': 0.01        # Transparência do preenchimento
 }
 
-# lyrBairrosPTNStyle = {
-#     'icon': 'circle',       # Padrão folium Icon
-#     'color': '#CCCCCC',     # Cor do ponto
-#     'fillOpacity': 0.5      # Opacidade do ponto
-# }
-
-# lyrLabelStyle = {
-#     'fillColor': '#FFFFFF',     # Sem preenchimento
-#     'color': '#FFFFFF',         # Cor da borda cinza
-#     'weight': 0,                # Espessura da borda
-#     'fillOpacity': 0.01         # Transparência do preenchimento
-# }
-
 if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR != []):
     # ===== BAIRROS =====
     DF_BAIRROS_LYR = DF_BAIRROS_PLG[DF_BAIRROS_PLG['nome'].isin(FILTRO_BAIRRO)]
@@ -1358,7 +1344,7 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
         'Temperatura': {
             'type': ['PNT','PLG'],
             'PNT': {
-                'color': '#ff006f',
+                'color': '#f36364',
                 'fill': True,
                 'weight': 0,
                 'opacity': 0.75,
@@ -1368,17 +1354,17 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
         'Umidade': {
             'type': ['PNT','PLG'],
             'PNT': {
-                'color': '#40c0cb',
-                'fill': False,
-                'weight': 4,
-                'opacity': 0,
+                'color': '#8dd0fc',
+                'fill': True,
+                'weight': 0,
+                'opacity': 0.75,
                 'sizes': [4, 8, 12, 16, 24]
             }
         },
         'Luminosidade': {
             'type': ['PNT','PLG'],
             'PNT': {
-                'color': '#e7d84b',
+                'color': '#f4d444',
                 'fill': True,
                 'weight': 0,
                 'opacity': 0.75,
@@ -1388,7 +1374,37 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
         'Ruido': {
             'type': ['PNT','PLG'],
             'PNT': {
-                'color': '#e7d84b',
+                'color': '#3e3b92',
+                'fill': True,
+                'weight': 0,
+                'opacity': 0.75,
+                'sizes': [4, 8, 12, 16, 24]
+            }
+        },
+        'CO₂': {
+            'type': ['PNT','PLG'],
+            'PNT': {
+                'color': '#9bb2e5',
+                'fill': True,
+                'weight': 0,
+                'opacity': 0.75,
+                'sizes': [4, 8, 12, 16, 24]
+            }
+        },
+        'ETVOC': {
+            'type': ['PNT','PLG'],
+            'PNT': {
+                'color': '#f74c06',
+                'fill': True,
+                'weight': 0,
+                'opacity': 0.75,
+                'sizes': [4, 8, 12, 16, 24]
+            }
+        },
+        'SAT': {
+            'type': ['PLG'],
+            'PNT': {
+                'color': '#f74c06',
                 'fill': True,
                 'weight': 0,
                 'opacity': 0.75,
@@ -1397,7 +1413,7 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
         },
     }
     for PROP in PROPS_VALUE_RADAR:
-        if (PROP == COLS_VALUE_RADAR[0]):
+        if (PROP == 'TEMPERATURA'):
             # ===== TEMPERATURA =====
             if ('PNT' in valuesSYMBOLS['Temperatura']['type']):
                 temperaturaGRPLYR = folium.FeatureGroup(name='Temperatura (Ponto)')
@@ -1441,7 +1457,8 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                     name="Temperatura",
                     show=False,
                 ).add_to(mapIndicators, index=999)
-            
+        
+        if (PROP == 'UMIDADE'):
             # ===== UMIDADE =====
             if ('PNT' in valuesSYMBOLS['Umidade']['type']):
                 umidadeGRPLYR = folium.FeatureGroup(name='Umidade (Ponto)')
@@ -1486,6 +1503,7 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                     show=False,
                 ).add_to(mapIndicators, index=999)
             
+        if (PROP == 'LUMINOSIDADE'):
             # ===== LUMINOSIDADE =====
             if ('PNT' in valuesSYMBOLS['Luminosidade']['type']):
                 luminosidadeGRPLYR = folium.FeatureGroup(name='Luminosidade (Ponto)')
@@ -1530,9 +1548,10 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                     show=False,
                 ).add_to(mapIndicators, index=999)
                 
+        if (PROP == 'RUIDO'):
             # ===== RUIDO =====
             if ('PNT' in valuesSYMBOLS['Ruido']['type']):
-                luminosidadeGRPLYR = folium.FeatureGroup(name='Ruido (Ponto)')
+                ruidoGRPLYR = folium.FeatureGroup(name='Ruido (Ponto)')
                 LYR_BAIRROS = DF_BAIRROS_LYR[['GEOID','geometry','BAIRRO','LUMINOSIDADE','LAT','LON']].copy()
                 LYR_BAIRROS['SYMBOL_CLASS'] = pd.cut(LYR_BAIRROS['LUMINOSIDADE'], bins=symbolClasses, labels=np.arange(1, symbolClasses+1))
                 for idx, row in LYR_BAIRROS.iterrows():
@@ -1544,9 +1563,9 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         fill=valuesSYMBOLS['Ruido']['PNT']['fill'],
                         fill_color=valuesSYMBOLS['Ruido']['PNT']['color'],
                         fill_opacity=valuesSYMBOLS['Ruido']['PNT']['opacity'],
-                    ).add_to(luminosidadeGRPLYR)
-                luminosidadeGRPLYR.show=False
-                luminosidadeGRPLYR.add_to(mapIndicators)
+                    ).add_to(ruidoGRPLYR)
+                ruidoGRPLYR.show=False
+                ruidoGRPLYR.add_to(mapIndicators)
             if ('PLG' in valuesSYMBOLS['Ruido']['type']):
                 CLASS_BINS_RUIDO = np.linspace(
                     DF_BAIRROS_LYR['RUIDO'].min(), 
@@ -1573,7 +1592,232 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                     name="Ruído",
                     show=False,
                 ).add_to(mapIndicators, index=999)
-        
+
+        if (PROP == 'CO₂'):
+            # ===== CO₂ =====
+            if ('PNT' in valuesSYMBOLS['CO₂']['type']):
+                co2GRPLYR = folium.FeatureGroup(name='CO₂ (Ponto)')
+                LYR_BAIRROS = DF_BAIRROS_LYR[['GEOID','geometry','BAIRRO','CO₂','LAT','LON']].copy()
+                LYR_BAIRROS['SYMBOL_CLASS'] = pd.cut(LYR_BAIRROS['CO₂'], bins=symbolClasses, labels=np.arange(1, symbolClasses+1))
+                for idx, row in LYR_BAIRROS.iterrows():
+                    folium.CircleMarker(
+                        location=[row['LAT'], row['LON']],
+                        radius=valuesSYMBOLS['CO₂']['PNT']['sizes'][int(row['SYMBOL_CLASS']) - 1],
+                        color=valuesSYMBOLS['CO₂']['PNT']['color'],
+                        weight=valuesSYMBOLS['CO₂']['PNT']['weight'],
+                        fill=valuesSYMBOLS['CO₂']['PNT']['fill'],
+                        fill_color=valuesSYMBOLS['CO₂']['PNT']['color'],
+                        fill_opacity=valuesSYMBOLS['CO₂']['PNT']['opacity'],
+                    ).add_to(co2GRPLYR)
+                co2GRPLYR.show=False
+                co2GRPLYR.add_to(mapIndicators)
+            if ('PLG' in valuesSYMBOLS['CO₂']['type']):
+                CLASS_BINS_CO2 = np.linspace(
+                    DF_BAIRROS_LYR['CO₂'].min(), 
+                    DF_BAIRROS_LYR['CO₂'].max(), 
+                    NRO_CLASSES + 1)
+                CMAP_CO2 = mcolors.LinearSegmentedColormap.from_list('custom', ['#6d90b9', '#bbc7dc'], N=NRO_CLASSES)
+                NORM_CO2 = mcolors.BoundaryNorm(CLASS_BINS_CO2, CMAP_CO2.N)
+                folium.GeoJson(
+                    DF_BAIRROS_LYR[['geometry','GEOID','BAIRRO','CO₂']],
+                    style_function = lambda feature: {
+                        'fillColor': mcolors.to_hex(CMAP_CO2(NORM_CO2(feature['properties']['CO₂']))),
+                        'color': 'black',
+                        'weight': 0,
+                        'fillOpacity': 0.7,
+                    },
+                    tooltip=folium.features.GeoJsonTooltip(
+                        fields=['BAIRRO','CO₂'],
+                        aliases=['Bairro: ','CO₂:']
+                    ),
+                    popup=folium.GeoJsonPopup(
+                        fields=['BAIRRO','CO₂'],
+                        aliases=['Bairro: ','CO₂:']
+                    ),
+                    name="CO₂",
+                    show=False,
+                ).add_to(mapIndicators, index=999)
+
+        if (PROP == 'ETVOC'):
+            # ===== ETVOC =====
+            if ('PNT' in valuesSYMBOLS['ETVOC']['type']):
+                etvocGRPLYR = folium.FeatureGroup(name='ETVOC (Ponto)')
+                LYR_BAIRROS = DF_BAIRROS_LYR[['GEOID','geometry','BAIRRO','ETVOC','LAT','LON']].copy()
+                LYR_BAIRROS['SYMBOL_CLASS'] = pd.cut(LYR_BAIRROS['ETVOC'], bins=symbolClasses, labels=np.arange(1, symbolClasses+1))
+                for idx, row in LYR_BAIRROS.iterrows():
+                    folium.CircleMarker(
+                        location=[row['LAT'], row['LON']],
+                        radius=valuesSYMBOLS['ETVOC']['PNT']['sizes'][int(row['SYMBOL_CLASS']) - 1],
+                        color=valuesSYMBOLS['ETVOC']['PNT']['color'],
+                        weight=valuesSYMBOLS['ETVOC']['PNT']['weight'],
+                        fill=valuesSYMBOLS['ETVOC']['PNT']['fill'],
+                        fill_color=valuesSYMBOLS['ETVOC']['PNT']['color'],
+                        fill_opacity=valuesSYMBOLS['ETVOC']['PNT']['opacity'],
+                    ).add_to(etvocGRPLYR)
+                etvocGRPLYR.show=False
+                etvocGRPLYR.add_to(mapIndicators)
+            if ('PLG' in valuesSYMBOLS['ETVOC']['type']):
+                CLASS_BINS_ETVOC = np.linspace(
+                    DF_BAIRROS_LYR['ETVOC'].min(), 
+                    DF_BAIRROS_LYR['ETVOC'].max(), 
+                    NRO_CLASSES + 1)
+                CMAP_ETVOC = mcolors.LinearSegmentedColormap.from_list('custom', ['#f74c06', '#f9bc2c'], N=NRO_CLASSES)
+                NORM_ETVOC = mcolors.BoundaryNorm(CLASS_BINS_ETVOC, CMAP_ETVOC.N)
+                folium.GeoJson(
+                    DF_BAIRROS_LYR[['geometry','GEOID','BAIRRO','ETVOC']],
+                    style_function = lambda feature: {
+                        'fillColor': mcolors.to_hex(CMAP_ETVOC(NORM_ETVOC(feature['properties']['ETVOC']))),
+                        'color': 'black',
+                        'weight': 0,
+                        'fillOpacity': 0.7,
+                    },
+                    tooltip=folium.features.GeoJsonTooltip(
+                        fields=['BAIRRO','ETVOC'],
+                        aliases=['Bairro: ','ETVOC:']
+                    ),
+                    popup=folium.GeoJsonPopup(
+                        fields=['BAIRRO','ETVOC'],
+                        aliases=['Bairro: ','ETVOC:']
+                    ),
+                    name="ETVOC",
+                    show=False,
+                ).add_to(mapIndicators, index=999)
+
+        if (PROP == 'SAT01'):
+            # ===== SAT01 =====
+            if ('PNT' in valuesSYMBOLS['SAT']['type']):
+                temperaturaGRPLYR = folium.FeatureGroup(name='SAT01 (Ponto)')
+                LYR_BAIRROS = DF_BAIRROS_LYR[['GEOID','geometry','BAIRRO','SAT01','LAT','LON']].copy()
+                LYR_BAIRROS['SYMBOL_CLASS'] = pd.cut(LYR_BAIRROS['SAT01'], bins=symbolClasses, labels=np.arange(1, symbolClasses+1))
+                for idx, row in LYR_BAIRROS.iterrows():
+                    folium.CircleMarker(
+                        location=[row['LAT'], row['LON']],
+                        radius=valuesSYMBOLS['SAT']['PNT']['sizes'][int(row['SYMBOL_CLASS']) - 1],
+                        color=valuesSYMBOLS['SAT']['PNT']['color'],
+                        weight=valuesSYMBOLS['SAT']['PNT']['weight'],
+                        fill=valuesSYMBOLS['SAT']['PNT']['fill'],
+                        fill_color=valuesSYMBOLS['SAT']['PNT']['color'],
+                        fill_opacity=valuesSYMBOLS['SAT']['PNT']['opacity'],
+                    ).add_to(temperaturaGRPLYR)
+                temperaturaGRPLYR.show=False
+                temperaturaGRPLYR.add_to(mapIndicators)
+            if ('PLG' in valuesSYMBOLS['SAT']['type']):
+                CLASS_BINS_SAT01 = np.linspace(
+                    DF_BAIRROS_LYR['SAT01'].min(), 
+                    DF_BAIRROS_LYR['SAT01'].max(), 
+                    NRO_CLASSES + 1)
+                CMAP_SAT01 = mcolors.LinearSegmentedColormap.from_list('custom', ['#f4d444', '#f86ca7'], N=NRO_CLASSES)
+                NORM_SAT01 = mcolors.BoundaryNorm(CLASS_BINS_SAT01, CMAP_SAT01.N)
+                folium.GeoJson(
+                    DF_BAIRROS_LYR[['geometry','GEOID','BAIRRO','SAT01']],
+                    style_function = lambda feature: {
+                        'fillColor': mcolors.to_hex(CMAP_SAT01(NORM_SAT01(feature['properties']['SAT01']))),
+                        'color': 'black',
+                        'weight': 0,
+                        'fillOpacity': 0.7,
+                    },
+                    tooltip=folium.features.GeoJsonTooltip(
+                        fields=['BAIRRO','SAT01'],
+                        aliases=['Bairro: ','SAT01:']
+                    ),
+                    popup=folium.GeoJsonPopup(
+                        fields=['BAIRRO','SAT01'],
+                        aliases=['Bairro: ','SAT01:']
+                    ),
+                    name='SAT01',
+                    show=False,
+                ).add_to(mapIndicators, index=999)
+
+        if (PROP == 'SAT02'):
+            # ===== SAT02 =====
+            if ('PNT' in valuesSYMBOLS['SAT']['type']):
+                temperaturaGRPLYR = folium.FeatureGroup(name='SAT02 (Ponto)')
+                LYR_BAIRROS = DF_BAIRROS_LYR[['GEOID','geometry','BAIRRO','SAT02','LAT','LON']].copy()
+                LYR_BAIRROS['SYMBOL_CLASS'] = pd.cut(LYR_BAIRROS['SAT02'], bins=symbolClasses, labels=np.arange(1, symbolClasses+1))
+                for idx, row in LYR_BAIRROS.iterrows():
+                    folium.CircleMarker(
+                        location=[row['LAT'], row['LON']],
+                        radius=valuesSYMBOLS['SAT']['PNT']['sizes'][int(row['SYMBOL_CLASS']) - 1],
+                        color=valuesSYMBOLS['SAT']['PNT']['color'],
+                        weight=valuesSYMBOLS['SAT']['PNT']['weight'],
+                        fill=valuesSYMBOLS['SAT']['PNT']['fill'],
+                        fill_color=valuesSYMBOLS['SAT']['PNT']['color'],
+                        fill_opacity=valuesSYMBOLS['SAT']['PNT']['opacity'],
+                    ).add_to(temperaturaGRPLYR)
+                temperaturaGRPLYR.show=False
+                temperaturaGRPLYR.add_to(mapIndicators)
+            if ('PLG' in valuesSYMBOLS['SAT']['type']):
+                CLASS_BINS_SAT01 = np.linspace(
+                    DF_BAIRROS_LYR['SAT02'].min(), 
+                    DF_BAIRROS_LYR['SAT02'].max(), 
+                    NRO_CLASSES + 1)
+                CMAP_SAT01 = mcolors.LinearSegmentedColormap.from_list('custom', ['#f4d444', '#f86ca7'], N=NRO_CLASSES)
+                NORM_SAT01 = mcolors.BoundaryNorm(CLASS_BINS_SAT01, CMAP_SAT01.N)
+                folium.GeoJson(
+                    DF_BAIRROS_LYR[['geometry','GEOID','BAIRRO','SAT02']],
+                    style_function = lambda feature: {
+                        'fillColor': mcolors.to_hex(CMAP_SAT01(NORM_SAT01(feature['properties']['SAT02']))),
+                        'color': 'black',
+                        'weight': 0,
+                        'fillOpacity': 0.7,
+                    },
+                    tooltip=folium.features.GeoJsonTooltip(
+                        fields=['BAIRRO','SAT02'],
+                        aliases=['Bairro: ','SAT02:']
+                    ),
+                    popup=folium.GeoJsonPopup(
+                        fields=['BAIRRO','SAT02'],
+                        aliases=['Bairro: ','SAT02:']
+                    ),
+                    name='SAT02',
+                    show=False,
+                ).add_to(mapIndicators, index=999)
+
+        if (PROP == 'SAT03'):
+            # ===== SAT03 =====
+            if ('PNT' in valuesSYMBOLS['SAT']['type']):
+                temperaturaGRPLYR = folium.FeatureGroup(name='SAT03 (Ponto)')
+                LYR_BAIRROS = DF_BAIRROS_LYR[['GEOID','geometry','BAIRRO','SAT03','LAT','LON']].copy()
+                LYR_BAIRROS['SYMBOL_CLASS'] = pd.cut(LYR_BAIRROS['SAT03'], bins=symbolClasses, labels=np.arange(1, symbolClasses+1))
+                for idx, row in LYR_BAIRROS.iterrows():
+                    folium.CircleMarker(
+                        location=[row['LAT'], row['LON']],
+                        radius=valuesSYMBOLS['SAT']['PNT']['sizes'][int(row['SYMBOL_CLASS']) - 1],
+                        color=valuesSYMBOLS['SAT']['PNT']['color'],
+                        weight=valuesSYMBOLS['SAT']['PNT']['weight'],
+                        fill=valuesSYMBOLS['SAT']['PNT']['fill'],
+                        fill_color=valuesSYMBOLS['SAT']['PNT']['color'],
+                        fill_opacity=valuesSYMBOLS['SAT']['PNT']['opacity'],
+                    ).add_to(temperaturaGRPLYR)
+                temperaturaGRPLYR.show=False
+                temperaturaGRPLYR.add_to(mapIndicators)
+            if ('PLG' in valuesSYMBOLS['SAT']['type']):
+                CLASS_BINS_SAT01 = np.linspace(
+                    DF_BAIRROS_LYR['SAT03'].min(), 
+                    DF_BAIRROS_LYR['SAT03'].max(), 
+                    NRO_CLASSES + 1)
+                CMAP_SAT01 = mcolors.LinearSegmentedColormap.from_list('custom', ['#f4d444', '#f86ca7'], N=NRO_CLASSES)
+                NORM_SAT01 = mcolors.BoundaryNorm(CLASS_BINS_SAT01, CMAP_SAT01.N)
+                folium.GeoJson(
+                    DF_BAIRROS_LYR[['geometry','GEOID','BAIRRO','SAT03']],
+                    style_function = lambda feature: {
+                        'fillColor': mcolors.to_hex(CMAP_SAT01(NORM_SAT01(feature['properties']['SAT03']))),
+                        'color': 'black',
+                        'weight': 0,
+                        'fillOpacity': 0.7,
+                    },
+                    tooltip=folium.features.GeoJsonTooltip(
+                        fields=['BAIRRO','SAT03'],
+                        aliases=['Bairro: ','SAT03:']
+                    ),
+                    popup=folium.GeoJsonPopup(
+                        fields=['BAIRRO','SAT03'],
+                        aliases=['Bairro: ','SAT03:']
+                    ),
+                    name='SAT03',
+                    show=False,
+                ).add_to(mapIndicators, index=999)
+            
     folium.FitOverlays().add_to(mapIndicators)
     folium.LayerControl().add_to(mapIndicators)
 
