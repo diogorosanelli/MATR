@@ -592,22 +592,22 @@ DF_SETORES_GEO = DF_SETORES_GEO.to_crs(crs="EPSG:4326")
 
 # Carregando tabelas de apoio do CENSO
 DF_CENSO_RENDA = DataLoader.loadCSV(f'{DATA_PATH}/CENSO_2010', 'DomicilioRenda_RS', ';')
-DF_CENSO_RENDA.drop(
-    columns=[
-        'Situacao_setor',
-        'V001','V003','V004','V005','V006','V007','V008','V009',
-        'V010','V011','V012','V013','V014',
-    ], 
-    inplace=True
-)
+DF_CENSO_RENDA = DF_CENSO_RENDA[['Cod_setor','V002']]
 DF_CENSO_RENDA.rename(columns={'V002':'v0008'}, inplace=True)
 DF_CENSO_RENDA = DF_CENSO_RENDA[DF_CENSO_RENDA['v0008'] != 'X']
 DF_CENSO_RENDA['v0008'] = DF_CENSO_RENDA[['v0008']].astype(int)
 
-# DF_CENSO_PES01 = DataLoader.loadCSV(f'{DATA_PATH}/CENSO_2010', 'Pessoa01_RS', ';')
+DF_CENSO_PES01 = DataLoader.loadCSV(f'{DATA_PATH}/CENSO_2010', 'Pessoa01_RS', ';')
+DF_CENSO_PES01 = DF_CENSO_PES01[['Cod_setor','V001']]
+DF_CENSO_PES01.rename(columns={'V001':'v0009'}, inplace=True)
+DF_CENSO_PES01['v0009'] = DF_CENSO_PES01[['v0009']].astype(int)
+
 # DF_CENSO_PES02 = DataLoader.loadCSV(f'{DATA_PATH}/CENSO_2010', 'Pessoa02_RS', ';')
 
-DF_SETORES = pd.concat([DF_SETORES_GEO, DF_CENSO_RENDA], axis=1, join='inner')
+DF_SETORES_RENDA = pd.concat([DF_SETORES_GEO, DF_CENSO_RENDA], axis=1, join='inner')
+DF_SETORES_RENDA.drop(columns=['Cod_setor'], inplace=True)
+
+DF_SETORES = pd.concat([DF_SETORES_RENDA, DF_CENSO_PES01], axis=1, join='inner')
 DF_SETORES.drop(columns=['Cod_setor'], inplace=True)
 
 # Carregar dados de Monitoramento
@@ -783,7 +783,8 @@ DF_SETORES_BAIRROS.rename(
         'v0005': 'Med_pess_dom_pvt_ocup',
         'v0006': 'Perc_Dom_pvt_ocup',
         'v0007': 'Tot_Dom_pvt_ocup',
-        'v0008': 'Tot_Renda_Dom',
+        'v0008': 'Renda',
+        'v0009': 'Alfabetizados',
     }, 
     inplace=True
 )
@@ -967,7 +968,8 @@ DF_SETORES_GRP = DF_SETORES_BAIRROS.groupby(['BAIRRO']).agg({
   'Med_pess_dom_pvt_ocup': 'sum',
   'Perc_Dom_pvt_ocup': 'sum',
   'Tot_Dom_pvt_ocup': 'sum',
-  'Tot_Renda_Dom': 'sum',
+  'Renda': 'sum',
+  'Alfabetizados': 'sum',
 }).reset_index()
 
 DF_DATA = DF_AMV_FILTERED.copy()
@@ -1201,7 +1203,7 @@ COLS_VALUE_RADAR = [
     'Sat_Bairro', 'Sat_Saúde', 'Pratica_Atividade', 'Sat_Financeira', 'Sat_atv_comercial',
     'Sat_Qual_Ar', 'Sat_Ruído', 'Sat_Lazer', 'Sat_col_Lixo', 'Sat_dist_bus_stop',
     'Sat_qual_bus_stop', 'Sat_Acesso', 'Sent_Segurança', 'Sent_Conf_Pessoas', 'Sat_Trat_Esgoto',
-    'Tot_Pessoas', 'Tot_Domicílios', 'Tot_Domicílios_pvt', 'Tot_Domicílios_col', 'Med_pess_dom_pvt_ocup', 'Perc_Dom_pvt_ocup', 'Tot_Dom_pvt_ocup', 'Tot_Renda_Dom',
+    'Tot_Pessoas', 'Tot_Domicílios', 'Tot_Domicílios_pvt', 'Tot_Domicílios_col', 'Med_pess_dom_pvt_ocup', 'Perc_Dom_pvt_ocup', 'Tot_Dom_pvt_ocup', 'Renda', 'Alfabetizados',
 ]
 
 PROPS_GROUP_RADAR = 'BAIRRO'
@@ -1225,7 +1227,7 @@ DF_AMV_RADAR = DF_DATA[[
     'Sat_Bairro', 'Sat_Saúde', 'Pratica_Atividade', 'Sat_Financeira', 'Sat_atv_comercial',
     'Sat_Qual_Ar', 'Sat_Ruído', 'Sat_Lazer', 'Sat_col_Lixo', 'Sat_dist_bus_stop', 
     'Sat_qual_bus_stop', 'Sat_Acesso', 'Sent_Segurança', 'Sent_Conf_Pessoas', 'Sat_Trat_Esgoto', 
-    'Tot_Pessoas', 'Tot_Domicílios', 'Tot_Domicílios_pvt', 'Tot_Domicílios_col', 'Med_pess_dom_pvt_ocup', 'Perc_Dom_pvt_ocup', 'Tot_Dom_pvt_ocup', 'Tot_Renda_Dom',
+    'Tot_Pessoas', 'Tot_Domicílios', 'Tot_Domicílios_pvt', 'Tot_Domicílios_col', 'Med_pess_dom_pvt_ocup', 'Perc_Dom_pvt_ocup', 'Tot_Dom_pvt_ocup', 'Renda', 'Alfabetizados',
 ]]
 
 DF_AMV_RADAR.rename(
@@ -1340,8 +1342,29 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
     MapUtils.addLayer(
         geoDF=DF_BAIRROS_LYR,
         styleConfig=lyrBairrosPLGStyle,
-        layerName='Limite de Bairros'
+        layerName='Limite de Bairros',
     ).add_to(mapIndicators)
+    
+    # ===== RÓTULOS =====
+    folium.GeoJson(
+        DF_BAIRROS_LYR[['geometry','GEOID','BAIRRO'] + PROPS_VALUE_RADAR],
+        style_function = lambda feature: {
+            'fillColor': '#FFF',
+            'color': '#888',
+            'weight': 0,
+            'fillOpacity': 0.01,
+        },
+        tooltip=folium.features.GeoJsonTooltip(
+            fields=['BAIRRO'] + PROPS_VALUE_RADAR,
+            # aliases=['Bairro: ']
+        ),
+        popup=folium.GeoJsonPopup(
+            fields=['BAIRRO'] + PROPS_VALUE_RADAR,
+            # aliases=['Bairro: ']
+        ),
+        name="Rótulos",
+        show=True,
+    ).add_to(mapIndicators, index=0)
     
     # ===== SEGURANÇA PÚBLICA =====
     DF_SEG_LYR = DF_SEG_FILTERED.copy()
@@ -1501,14 +1524,14 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         'weight': 0,
                         'fillOpacity': 0.7,
                     },
-                    tooltip=folium.features.GeoJsonTooltip(
-                        fields=['BAIRRO','TEMPERATURA'],
-                        aliases=['Bairro: ','Temperatura:']
-                    ),
-                    popup=folium.GeoJsonPopup(
-                        fields=['BAIRRO','TEMPERATURA'],
-                        aliases=['Bairro: ','Temperatura:']
-                    ),
+                    # tooltip=folium.features.GeoJsonTooltip(
+                    #     fields=['BAIRRO','TEMPERATURA'],
+                    #     aliases=['Bairro: ','Temperatura:']
+                    # ),
+                    # popup=folium.GeoJsonPopup(
+                    #     fields=['BAIRRO','TEMPERATURA'],
+                    #     aliases=['Bairro: ','Temperatura:']
+                    # ),
                     name="Temperatura",
                     show=False,
                 ).add_to(mapIndicators, index=999)
@@ -1546,14 +1569,14 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         'weight': 0,
                         'fillOpacity': 0.7,
                     },
-                    tooltip=folium.features.GeoJsonTooltip(
-                        fields=['BAIRRO','UMIDADE'],
-                        aliases=['Bairro: ','Umidade:']
-                    ),
-                    popup=folium.GeoJsonPopup(
-                        fields=['BAIRRO','UMIDADE'],
-                        aliases=['Bairro: ','Umidade:']
-                    ),
+                    # tooltip=folium.features.GeoJsonTooltip(
+                    #     fields=['BAIRRO','UMIDADE'],
+                    #     aliases=['Bairro: ','Umidade:']
+                    # ),
+                    # popup=folium.GeoJsonPopup(
+                    #     fields=['BAIRRO','UMIDADE'],
+                    #     aliases=['Bairro: ','Umidade:']
+                    # ),
                     name="Umidade",
                     show=False,
                 ).add_to(mapIndicators, index=999)
@@ -1591,14 +1614,14 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         'weight': 0,
                         'fillOpacity': 0.7,
                     },
-                    tooltip=folium.features.GeoJsonTooltip(
-                        fields=['BAIRRO','LUMINOSIDADE'],
-                        aliases=['Bairro: ','Luminosidade:']
-                    ),
-                    popup=folium.GeoJsonPopup(
-                        fields=['BAIRRO','LUMINOSIDADE'],
-                        aliases=['Bairro: ','Luminosidade:']
-                    ),
+                    # tooltip=folium.features.GeoJsonTooltip(
+                    #     fields=['BAIRRO','LUMINOSIDADE'],
+                    #     aliases=['Bairro: ','Luminosidade:']
+                    # ),
+                    # popup=folium.GeoJsonPopup(
+                    #     fields=['BAIRRO','LUMINOSIDADE'],
+                    #     aliases=['Bairro: ','Luminosidade:']
+                    # ),
                     name="Luminosidade",
                     show=False,
                 ).add_to(mapIndicators, index=999)
@@ -1636,14 +1659,14 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         'weight': 0,
                         'fillOpacity': 0.7,
                     },
-                    tooltip=folium.features.GeoJsonTooltip(
-                        fields=['BAIRRO','RUIDO'],
-                        aliases=['Bairro: ','Ruído:']
-                    ),
-                    popup=folium.GeoJsonPopup(
-                        fields=['BAIRRO','RUIDO'],
-                        aliases=['Bairro: ','Ruído:']
-                    ),
+                    # tooltip=folium.features.GeoJsonTooltip(
+                    #     fields=['BAIRRO','RUIDO'],
+                    #     aliases=['Bairro: ','Ruído:']
+                    # ),
+                    # popup=folium.GeoJsonPopup(
+                    #     fields=['BAIRRO','RUIDO'],
+                    #     aliases=['Bairro: ','Ruído:']
+                    # ),
                     name="Ruído",
                     show=False,
                 ).add_to(mapIndicators, index=999)
@@ -1681,14 +1704,14 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         'weight': 0,
                         'fillOpacity': 0.7,
                     },
-                    tooltip=folium.features.GeoJsonTooltip(
-                        fields=['BAIRRO','CO₂'],
-                        aliases=['Bairro: ','CO₂:']
-                    ),
-                    popup=folium.GeoJsonPopup(
-                        fields=['BAIRRO','CO₂'],
-                        aliases=['Bairro: ','CO₂:']
-                    ),
+                    # tooltip=folium.features.GeoJsonTooltip(
+                    #     fields=['BAIRRO','CO₂'],
+                    #     aliases=['Bairro: ','CO₂:']
+                    # ),
+                    # popup=folium.GeoJsonPopup(
+                    #     fields=['BAIRRO','CO₂'],
+                    #     aliases=['Bairro: ','CO₂:']
+                    # ),
                     name="CO₂",
                     show=False,
                 ).add_to(mapIndicators, index=999)
@@ -1726,14 +1749,14 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         'weight': 0,
                         'fillOpacity': 0.7,
                     },
-                    tooltip=folium.features.GeoJsonTooltip(
-                        fields=['BAIRRO','ETVOC'],
-                        aliases=['Bairro: ','ETVOC:']
-                    ),
-                    popup=folium.GeoJsonPopup(
-                        fields=['BAIRRO','ETVOC'],
-                        aliases=['Bairro: ','ETVOC:']
-                    ),
+                    # tooltip=folium.features.GeoJsonTooltip(
+                    #     fields=['BAIRRO','ETVOC'],
+                    #     aliases=['Bairro: ','ETVOC:']
+                    # ),
+                    # popup=folium.GeoJsonPopup(
+                    #     fields=['BAIRRO','ETVOC'],
+                    #     aliases=['Bairro: ','ETVOC:']
+                    # ),
                     name="ETVOC",
                     show=False,
                 ).add_to(mapIndicators, index=999)
@@ -1771,14 +1794,14 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         'weight': 0,
                         'fillOpacity': 0.7,
                     },
-                    tooltip=folium.features.GeoJsonTooltip(
-                        fields=['BAIRRO','Sat_Bairro'],
-                        aliases=['Bairro: ','Sat_Bairro:']
-                    ),
-                    popup=folium.GeoJsonPopup(
-                        fields=['BAIRRO','Sat_Bairro'],
-                        aliases=['Bairro: ','Sat_Bairro:']
-                    ),
+                    # tooltip=folium.features.GeoJsonTooltip(
+                    #     fields=['BAIRRO','Sat_Bairro'],
+                    #     aliases=['Bairro: ','Sat_Bairro:']
+                    # ),
+                    # popup=folium.GeoJsonPopup(
+                    #     fields=['BAIRRO','Sat_Bairro'],
+                    #     aliases=['Bairro: ','Sat_Bairro:']
+                    # ),
                     name='Sat_Bairro',
                     show=False,
                 ).add_to(mapIndicators, index=999)
@@ -1816,14 +1839,14 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         'weight': 0,
                         'fillOpacity': 0.7,
                     },
-                    tooltip=folium.features.GeoJsonTooltip(
-                        fields=['BAIRRO','Sat_Saúde'],
-                        aliases=['Bairro: ','Sat_Saúde:']
-                    ),
-                    popup=folium.GeoJsonPopup(
-                        fields=['BAIRRO','Sat_Saúde'],
-                        aliases=['Bairro: ','Sat_Saúde:']
-                    ),
+                    # tooltip=folium.features.GeoJsonTooltip(
+                    #     fields=['BAIRRO','Sat_Saúde'],
+                    #     aliases=['Bairro: ','Sat_Saúde:']
+                    # ),
+                    # popup=folium.GeoJsonPopup(
+                    #     fields=['BAIRRO','Sat_Saúde'],
+                    #     aliases=['Bairro: ','Sat_Saúde:']
+                    # ),
                     name='Sat_Saúde',
                     show=False,
                 ).add_to(mapIndicators, index=999)
@@ -1861,14 +1884,14 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         'weight': 0,
                         'fillOpacity': 0.7,
                     },
-                    tooltip=folium.features.GeoJsonTooltip(
-                        fields=['BAIRRO','Pratica_Atividade'],
-                        aliases=['Bairro: ','Pratica_Atividade:']
-                    ),
-                    popup=folium.GeoJsonPopup(
-                        fields=['BAIRRO','Pratica_Atividade'],
-                        aliases=['Bairro: ','Pratica_Atividade:']
-                    ),
+                    # tooltip=folium.features.GeoJsonTooltip(
+                    #     fields=['BAIRRO','Pratica_Atividade'],
+                    #     aliases=['Bairro: ','Pratica_Atividade:']
+                    # ),
+                    # popup=folium.GeoJsonPopup(
+                    #     fields=['BAIRRO','Pratica_Atividade'],
+                    #     aliases=['Bairro: ','Pratica_Atividade:']
+                    # ),
                     name='Pratica_Atividade',
                     show=False,
                 ).add_to(mapIndicators, index=999)
@@ -1906,14 +1929,14 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         'weight': 0,
                         'fillOpacity': 0.7,
                     },
-                    tooltip=folium.features.GeoJsonTooltip(
-                        fields=['BAIRRO','Sat_Financeira'],
-                        aliases=['Bairro: ','Sat_Financeira:']
-                    ),
-                    popup=folium.GeoJsonPopup(
-                        fields=['BAIRRO','Sat_Financeira'],
-                        aliases=['Bairro: ','Sat_Financeira:']
-                    ),
+                    # tooltip=folium.features.GeoJsonTooltip(
+                    #     fields=['BAIRRO','Sat_Financeira'],
+                    #     aliases=['Bairro: ','Sat_Financeira:']
+                    # ),
+                    # popup=folium.GeoJsonPopup(
+                    #     fields=['BAIRRO','Sat_Financeira'],
+                    #     aliases=['Bairro: ','Sat_Financeira:']
+                    # ),
                     name='Sat_Financeira',
                     show=False,
                 ).add_to(mapIndicators, index=999)
@@ -1951,14 +1974,14 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         'weight': 0,
                         'fillOpacity': 0.7,
                     },
-                    tooltip=folium.features.GeoJsonTooltip(
-                        fields=['BAIRRO','Sat_atv_comercial'],
-                        aliases=['Bairro: ','Sat_atv_comercial:']
-                    ),
-                    popup=folium.GeoJsonPopup(
-                        fields=['BAIRRO','Sat_atv_comercial'],
-                        aliases=['Bairro: ','Sat_atv_comercial:']
-                    ),
+                    # tooltip=folium.features.GeoJsonTooltip(
+                    #     fields=['BAIRRO','Sat_atv_comercial'],
+                    #     aliases=['Bairro: ','Sat_atv_comercial:']
+                    # ),
+                    # popup=folium.GeoJsonPopup(
+                    #     fields=['BAIRRO','Sat_atv_comercial'],
+                    #     aliases=['Bairro: ','Sat_atv_comercial:']
+                    # ),
                     name='Sat_atv_comercial',
                     show=False,
                 ).add_to(mapIndicators, index=999)
@@ -1996,14 +2019,14 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         'weight': 0,
                         'fillOpacity': 0.7,
                     },
-                    tooltip=folium.features.GeoJsonTooltip(
-                        fields=['BAIRRO','Sat_Qual_Ar'],
-                        aliases=['Bairro: ','Sat_Qual_Ar:']
-                    ),
-                    popup=folium.GeoJsonPopup(
-                        fields=['BAIRRO','Sat_Qual_Ar'],
-                        aliases=['Bairro: ','Sat_Qual_Ar:']
-                    ),
+                    # tooltip=folium.features.GeoJsonTooltip(
+                    #     fields=['BAIRRO','Sat_Qual_Ar'],
+                    #     aliases=['Bairro: ','Sat_Qual_Ar:']
+                    # ),
+                    # popup=folium.GeoJsonPopup(
+                    #     fields=['BAIRRO','Sat_Qual_Ar'],
+                    #     aliases=['Bairro: ','Sat_Qual_Ar:']
+                    # ),
                     name='Sat_Qual_Ar',
                     show=False,
                 ).add_to(mapIndicators, index=999)
@@ -2041,14 +2064,14 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         'weight': 0,
                         'fillOpacity': 0.7,
                     },
-                    tooltip=folium.features.GeoJsonTooltip(
-                        fields=['BAIRRO','Sat_Ruído'],
-                        aliases=['Bairro: ','Sat_Ruído:']
-                    ),
-                    popup=folium.GeoJsonPopup(
-                        fields=['BAIRRO','Sat_Ruído'],
-                        aliases=['Bairro: ','Sat_Ruído:']
-                    ),
+                    # tooltip=folium.features.GeoJsonTooltip(
+                    #     fields=['BAIRRO','Sat_Ruído'],
+                    #     aliases=['Bairro: ','Sat_Ruído:']
+                    # ),
+                    # popup=folium.GeoJsonPopup(
+                    #     fields=['BAIRRO','Sat_Ruído'],
+                    #     aliases=['Bairro: ','Sat_Ruído:']
+                    # ),
                     name='Sat_Ruído',
                     show=False,
                 ).add_to(mapIndicators, index=999)
@@ -2086,14 +2109,14 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         'weight': 0,
                         'fillOpacity': 0.7,
                     },
-                    tooltip=folium.features.GeoJsonTooltip(
-                        fields=['BAIRRO','Sat_Lazer'],
-                        aliases=['Bairro: ','Sat_Lazer:']
-                    ),
-                    popup=folium.GeoJsonPopup(
-                        fields=['BAIRRO','Sat_Lazer'],
-                        aliases=['Bairro: ','Sat_Lazer:']
-                    ),
+                    # tooltip=folium.features.GeoJsonTooltip(
+                    #     fields=['BAIRRO','Sat_Lazer'],
+                    #     aliases=['Bairro: ','Sat_Lazer:']
+                    # ),
+                    # popup=folium.GeoJsonPopup(
+                    #     fields=['BAIRRO','Sat_Lazer'],
+                    #     aliases=['Bairro: ','Sat_Lazer:']
+                    # ),
                     name='Sat_Lazer',
                     show=False,
                 ).add_to(mapIndicators, index=999)
@@ -2131,14 +2154,14 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         'weight': 0,
                         'fillOpacity': 0.7,
                     },
-                    tooltip=folium.features.GeoJsonTooltip(
-                        fields=['BAIRRO','Sat_col_Lixo'],
-                        aliases=['Bairro: ','Sat_col_Lixo:']
-                    ),
-                    popup=folium.GeoJsonPopup(
-                        fields=['BAIRRO','Sat_col_Lixo'],
-                        aliases=['Bairro: ','Sat_col_Lixo:']
-                    ),
+                    # tooltip=folium.features.GeoJsonTooltip(
+                    #     fields=['BAIRRO','Sat_col_Lixo'],
+                    #     aliases=['Bairro: ','Sat_col_Lixo:']
+                    # ),
+                    # popup=folium.GeoJsonPopup(
+                    #     fields=['BAIRRO','Sat_col_Lixo'],
+                    #     aliases=['Bairro: ','Sat_col_Lixo:']
+                    # ),
                     name='Sat_col_Lixo',
                     show=False,
                 ).add_to(mapIndicators, index=999)
@@ -2176,14 +2199,14 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         'weight': 0,
                         'fillOpacity': 0.7,
                     },
-                    tooltip=folium.features.GeoJsonTooltip(
-                        fields=['BAIRRO','Sat_dist_bus_stop'],
-                        aliases=['Bairro: ','Sat_dist_bus_stop:']
-                    ),
-                    popup=folium.GeoJsonPopup(
-                        fields=['BAIRRO','Sat_dist_bus_stop'],
-                        aliases=['Bairro: ','Sat_dist_bus_stop:']
-                    ),
+                    # tooltip=folium.features.GeoJsonTooltip(
+                    #     fields=['BAIRRO','Sat_dist_bus_stop'],
+                    #     aliases=['Bairro: ','Sat_dist_bus_stop:']
+                    # ),
+                    # popup=folium.GeoJsonPopup(
+                    #     fields=['BAIRRO','Sat_dist_bus_stop'],
+                    #     aliases=['Bairro: ','Sat_dist_bus_stop:']
+                    # ),
                     name='Sat_dist_bus_stop',
                     show=False,
                 ).add_to(mapIndicators, index=999)
@@ -2221,14 +2244,14 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         'weight': 0,
                         'fillOpacity': 0.7,
                     },
-                    tooltip=folium.features.GeoJsonTooltip(
-                        fields=['BAIRRO','Sat_qual_bus_stop'],
-                        aliases=['Bairro: ','Sat_qual_bus_stop:']
-                    ),
-                    popup=folium.GeoJsonPopup(
-                        fields=['BAIRRO','Sat_qual_bus_stop'],
-                        aliases=['Bairro: ','Sat_qual_bus_stop:']
-                    ),
+                    # tooltip=folium.features.GeoJsonTooltip(
+                    #     fields=['BAIRRO','Sat_qual_bus_stop'],
+                    #     aliases=['Bairro: ','Sat_qual_bus_stop:']
+                    # ),
+                    # popup=folium.GeoJsonPopup(
+                    #     fields=['BAIRRO','Sat_qual_bus_stop'],
+                    #     aliases=['Bairro: ','Sat_qual_bus_stop:']
+                    # ),
                     name='Sat_qual_bus_stop',
                     show=False,
                 ).add_to(mapIndicators, index=999)
@@ -2266,14 +2289,14 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         'weight': 0,
                         'fillOpacity': 0.7,
                     },
-                    tooltip=folium.features.GeoJsonTooltip(
-                        fields=['BAIRRO','Sat_Acesso'],
-                        aliases=['Bairro: ','Sat_Acesso:']
-                    ),
-                    popup=folium.GeoJsonPopup(
-                        fields=['BAIRRO','Sat_Acesso'],
-                        aliases=['Bairro: ','Sat_Acesso:']
-                    ),
+                    # tooltip=folium.features.GeoJsonTooltip(
+                    #     fields=['BAIRRO','Sat_Acesso'],
+                    #     aliases=['Bairro: ','Sat_Acesso:']
+                    # ),
+                    # popup=folium.GeoJsonPopup(
+                    #     fields=['BAIRRO','Sat_Acesso'],
+                    #     aliases=['Bairro: ','Sat_Acesso:']
+                    # ),
                     name='Sat_Acesso',
                     show=False,
                 ).add_to(mapIndicators, index=999)
@@ -2311,14 +2334,14 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         'weight': 0,
                         'fillOpacity': 0.7,
                     },
-                    tooltip=folium.features.GeoJsonTooltip(
-                        fields=['BAIRRO','Sent_Segurança'],
-                        aliases=['Bairro: ','Sent_Segurança:']
-                    ),
-                    popup=folium.GeoJsonPopup(
-                        fields=['BAIRRO','Sent_Segurança'],
-                        aliases=['Bairro: ','Sent_Segurança:']
-                    ),
+                    # tooltip=folium.features.GeoJsonTooltip(
+                    #     fields=['BAIRRO','Sent_Segurança'],
+                    #     aliases=['Bairro: ','Sent_Segurança:']
+                    # ),
+                    # popup=folium.GeoJsonPopup(
+                    #     fields=['BAIRRO','Sent_Segurança'],
+                    #     aliases=['Bairro: ','Sent_Segurança:']
+                    # ),
                     name='Sent_Segurança',
                     show=False,
                 ).add_to(mapIndicators, index=999)
@@ -2356,14 +2379,14 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         'weight': 0,
                         'fillOpacity': 0.7,
                     },
-                    tooltip=folium.features.GeoJsonTooltip(
-                        fields=['BAIRRO','Sent_Conf_Pessoas'],
-                        aliases=['Bairro: ','Sent_Conf_Pessoas:']
-                    ),
-                    popup=folium.GeoJsonPopup(
-                        fields=['BAIRRO','Sent_Conf_Pessoas'],
-                        aliases=['Bairro: ','Sent_Conf_Pessoas:']
-                    ),
+                    # tooltip=folium.features.GeoJsonTooltip(
+                    #     fields=['BAIRRO','Sent_Conf_Pessoas'],
+                    #     aliases=['Bairro: ','Sent_Conf_Pessoas:']
+                    # ),
+                    # popup=folium.GeoJsonPopup(
+                    #     fields=['BAIRRO','Sent_Conf_Pessoas'],
+                    #     aliases=['Bairro: ','Sent_Conf_Pessoas:']
+                    # ),
                     name='Sent_Conf_Pessoas',
                     show=False,
                 ).add_to(mapIndicators, index=999)
@@ -2401,14 +2424,14 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         'weight': 0,
                         'fillOpacity': 0.7,
                     },
-                    tooltip=folium.features.GeoJsonTooltip(
-                        fields=['BAIRRO','Sat_Trat_Esgoto'],
-                        aliases=['Bairro: ','Sat_Trat_Esgoto:']
-                    ),
-                    popup=folium.GeoJsonPopup(
-                        fields=['BAIRRO','Sat_Trat_Esgoto'],
-                        aliases=['Bairro: ','Sat_Trat_Esgoto:']
-                    ),
+                    # tooltip=folium.features.GeoJsonTooltip(
+                    #     fields=['BAIRRO','Sat_Trat_Esgoto'],
+                    #     aliases=['Bairro: ','Sat_Trat_Esgoto:']
+                    # ),
+                    # popup=folium.GeoJsonPopup(
+                    #     fields=['BAIRRO','Sat_Trat_Esgoto'],
+                    #     aliases=['Bairro: ','Sat_Trat_Esgoto:']
+                    # ),
                     name='Sat_Trat_Esgoto',
                     show=False,
                 ).add_to(mapIndicators, index=999)
@@ -2446,14 +2469,14 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         'weight': 0,
                         'fillOpacity': 0.7,
                     },
-                    tooltip=folium.features.GeoJsonTooltip(
-                        fields=['BAIRRO','Tot_Pessoas'],
-                        aliases=['Bairro: ','Tot_Pessoas:']
-                    ),
-                    popup=folium.GeoJsonPopup(
-                        fields=['BAIRRO','Tot_Pessoas'],
-                        aliases=['Bairro: ','Tot_Pessoas:']
-                    ),
+                    # tooltip=folium.features.GeoJsonTooltip(
+                    #     fields=['BAIRRO','Tot_Pessoas'],
+                    #     aliases=['Bairro: ','Tot_Pessoas:']
+                    # ),
+                    # popup=folium.GeoJsonPopup(
+                    #     fields=['BAIRRO','Tot_Pessoas'],
+                    #     aliases=['Bairro: ','Tot_Pessoas:']
+                    # ),
                     name='Tot_Pessoas',
                     show=False,
                 ).add_to(mapIndicators, index=999)
@@ -2491,14 +2514,14 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         'weight': 0,
                         'fillOpacity': 0.7,
                     },
-                    tooltip=folium.features.GeoJsonTooltip(
-                        fields=['BAIRRO','Tot_Domicílios'],
-                        aliases=['Bairro: ','Tot_Domicílios:']
-                    ),
-                    popup=folium.GeoJsonPopup(
-                        fields=['BAIRRO','Tot_Domicílios'],
-                        aliases=['Bairro: ','Tot_Domicílios:']
-                    ),
+                    # tooltip=folium.features.GeoJsonTooltip(
+                    #     fields=['BAIRRO','Tot_Domicílios'],
+                    #     aliases=['Bairro: ','Tot_Domicílios:']
+                    # ),
+                    # popup=folium.GeoJsonPopup(
+                    #     fields=['BAIRRO','Tot_Domicílios'],
+                    #     aliases=['Bairro: ','Tot_Domicílios:']
+                    # ),
                     name='Tot_Domicílios',
                     show=False,
                 ).add_to(mapIndicators, index=999)
@@ -2536,14 +2559,14 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         'weight': 0,
                         'fillOpacity': 0.7,
                     },
-                    tooltip=folium.features.GeoJsonTooltip(
-                        fields=['BAIRRO','Tot_Domicílios_pvt'],
-                        aliases=['Bairro: ','Tot_Domicílios_pvt:']
-                    ),
-                    popup=folium.GeoJsonPopup(
-                        fields=['BAIRRO','Tot_Domicílios_pvt'],
-                        aliases=['Bairro: ','Tot_Domicílios_pvt:']
-                    ),
+                    # tooltip=folium.features.GeoJsonTooltip(
+                    #     fields=['BAIRRO','Tot_Domicílios_pvt'],
+                    #     aliases=['Bairro: ','Tot_Domicílios_pvt:']
+                    # ),
+                    # popup=folium.GeoJsonPopup(
+                    #     fields=['BAIRRO','Tot_Domicílios_pvt'],
+                    #     aliases=['Bairro: ','Tot_Domicílios_pvt:']
+                    # ),
                     name='Tot_Domicílios_pvt',
                     show=False,
                 ).add_to(mapIndicators, index=999)
@@ -2581,14 +2604,14 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         'weight': 0,
                         'fillOpacity': 0.7,
                     },
-                    tooltip=folium.features.GeoJsonTooltip(
-                        fields=['BAIRRO','Tot_Domicílios_col'],
-                        aliases=['Bairro: ','Tot_Domicílios_col:']
-                    ),
-                    popup=folium.GeoJsonPopup(
-                        fields=['BAIRRO','Tot_Domicílios_col'],
-                        aliases=['Bairro: ','Tot_Domicílios_col:']
-                    ),
+                    # tooltip=folium.features.GeoJsonTooltip(
+                    #     fields=['BAIRRO','Tot_Domicílios_col'],
+                    #     aliases=['Bairro: ','Tot_Domicílios_col:']
+                    # ),
+                    # popup=folium.GeoJsonPopup(
+                    #     fields=['BAIRRO','Tot_Domicílios_col'],
+                    #     aliases=['Bairro: ','Tot_Domicílios_col:']
+                    # ),
                     name='Tot_Domicílios_col',
                     show=False,
                 ).add_to(mapIndicators, index=999)
@@ -2626,14 +2649,14 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         'weight': 0,
                         'fillOpacity': 0.7,
                     },
-                    tooltip=folium.features.GeoJsonTooltip(
-                        fields=['BAIRRO','Med_pess_dom_pvt_ocup'],
-                        aliases=['Bairro: ','Med_pess_dom_pvt_ocup:']
-                    ),
-                    popup=folium.GeoJsonPopup(
-                        fields=['BAIRRO','Med_pess_dom_pvt_ocup'],
-                        aliases=['Bairro: ','Med_pess_dom_pvt_ocup:']
-                    ),
+                    # tooltip=folium.features.GeoJsonTooltip(
+                    #     fields=['BAIRRO','Med_pess_dom_pvt_ocup'],
+                    #     aliases=['Bairro: ','Med_pess_dom_pvt_ocup:']
+                    # ),
+                    # popup=folium.GeoJsonPopup(
+                    #     fields=['BAIRRO','Med_pess_dom_pvt_ocup'],
+                    #     aliases=['Bairro: ','Med_pess_dom_pvt_ocup:']
+                    # ),
                     name='Med_pess_dom_pvt_ocup',
                     show=False,
                 ).add_to(mapIndicators, index=999)
@@ -2671,14 +2694,14 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         'weight': 0,
                         'fillOpacity': 0.7,
                     },
-                    tooltip=folium.features.GeoJsonTooltip(
-                        fields=['BAIRRO','Perc_Dom_pvt_ocup'],
-                        aliases=['Bairro: ','Perc_Dom_pvt_ocup:']
-                    ),
-                    popup=folium.GeoJsonPopup(
-                        fields=['BAIRRO','Perc_Dom_pvt_ocup'],
-                        aliases=['Bairro: ','Perc_Dom_pvt_ocup:']
-                    ),
+                    # tooltip=folium.features.GeoJsonTooltip(
+                    #     fields=['BAIRRO','Perc_Dom_pvt_ocup'],
+                    #     aliases=['Bairro: ','Perc_Dom_pvt_ocup:']
+                    # ),
+                    # popup=folium.GeoJsonPopup(
+                    #     fields=['BAIRRO','Perc_Dom_pvt_ocup'],
+                    #     aliases=['Bairro: ','Perc_Dom_pvt_ocup:']
+                    # ),
                     name='Perc_Dom_pvt_ocup',
                     show=False,
                 ).add_to(mapIndicators, index=999)
@@ -2716,14 +2739,14 @@ if(DF_BAIRROS_PLG.empty == False and FILTRO_BAIRRO != [] and PROPS_VALUE_RADAR !
                         'weight': 0,
                         'fillOpacity': 0.7,
                     },
-                    tooltip=folium.features.GeoJsonTooltip(
-                        fields=['BAIRRO','Tot_Dom_pvt_ocup'],
-                        aliases=['Bairro: ','Tot_Dom_pvt_ocup:']
-                    ),
-                    popup=folium.GeoJsonPopup(
-                        fields=['BAIRRO','Tot_Dom_pvt_ocup'],
-                        aliases=['Bairro: ','Tot_Dom_pvt_ocup:']
-                    ),
+                    # tooltip=folium.features.GeoJsonTooltip(
+                    #     fields=['BAIRRO','Tot_Dom_pvt_ocup'],
+                    #     aliases=['Bairro: ','Tot_Dom_pvt_ocup:']
+                    # ),
+                    # popup=folium.GeoJsonPopup(
+                    #     fields=['BAIRRO','Tot_Dom_pvt_ocup'],
+                    #     aliases=['Bairro: ','Tot_Dom_pvt_ocup:']
+                    # ),
                     name='Tot_Dom_pvt_ocup',
                     show=False,
                 ).add_to(mapIndicators, index=999)
