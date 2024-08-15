@@ -440,7 +440,8 @@ class ChartUtils:
             plotDF = pd.DataFrame({
                 f'{fieldClasses}': ['','','','','',''],
                 'theta': ['Temperatura', 'Umidade', 'Luminosidade', 'Ruído', 'CO₂', 'ETVOC'],
-                'r': [0, 0, 0, 0, 0, 0]
+                'r': [0, 0, 0, 0, 0, 0],
+                'label': [0, 0, 0, 0, 0, 0]
             })
         
         plotDF.rename(
@@ -451,6 +452,15 @@ class ChartUtils:
             },
             inplace=True
         )
+        
+        # fig = go.Figure()
+        # fig.add_trace(
+        #     go.Scatterpolar(
+        #         r = dataframe['r'],
+        #         theta = dataframe['theta'],
+        #         mode = 'lines'
+        #     )
+        # )
         
         fig = px.line_polar(
             plotDF,
@@ -574,11 +584,31 @@ DF_BAIRROS_PTN = DataLoader.loadSHP(DATA_PATH, 'RS_CAXIASDOSUL_PTN_Bairros')
 DF_BAIRROS_PLG = DF_BAIRROS_PLG.to_crs(crs="EPSG:4326")
 
 # Carregar dados de Setores Censitários
-DF_SETORES = DataLoader.loadSHP(DATA_PATH, 'RS_Malha_Preliminar_2022')
-DF_SETORES = DF_SETORES[DF_SETORES['NM_MUN'] == 'Caxias do Sul']
+DF_SETORES_GEO = DataLoader.loadSHP(DATA_PATH, 'RS_Malha_Preliminar_2022')
+DF_SETORES_GEO = DF_SETORES_GEO[DF_SETORES_GEO['NM_MUN'] == 'Caxias do Sul']
 
 # Reprojetando camada de setores censitários
-DF_SETORES = DF_SETORES.to_crs(crs="EPSG:4326")
+DF_SETORES_GEO = DF_SETORES_GEO.to_crs(crs="EPSG:4326")
+
+# Carregando tabelas de apoio do CENSO
+DF_CENSO_RENDA = DataLoader.loadCSV(f'{DATA_PATH}/CENSO_2010', 'DomicilioRenda_RS', ';')
+DF_CENSO_RENDA.drop(
+    columns=[
+        'Situacao_setor',
+        'V001','V003','V004','V005','V006','V007','V008','V009',
+        'V010','V011','V012','V013','V014',
+    ], 
+    inplace=True
+)
+DF_CENSO_RENDA.rename(columns={'V002':'v0008'}, inplace=True)
+DF_CENSO_RENDA = DF_CENSO_RENDA[DF_CENSO_RENDA['v0008'] != 'X']
+DF_CENSO_RENDA['v0008'] = DF_CENSO_RENDA[['v0008']].astype(int)
+
+# DF_CENSO_PES01 = DataLoader.loadCSV(f'{DATA_PATH}/CENSO_2010', 'Pessoa01_RS', ';')
+# DF_CENSO_PES02 = DataLoader.loadCSV(f'{DATA_PATH}/CENSO_2010', 'Pessoa02_RS', ';')
+
+DF_SETORES = pd.concat([DF_SETORES_GEO, DF_CENSO_RENDA], axis=1, join='inner')
+DF_SETORES.drop(columns=['Cod_setor'], inplace=True)
 
 # Carregar dados de Monitoramento
 DF_AMV_01 = DataLoader.loadCSV(DATA_PATH, 'AMV_01', '|')
@@ -753,6 +783,7 @@ DF_SETORES_BAIRROS.rename(
         'v0005': 'Med_pess_dom_pvt_ocup',
         'v0006': 'Perc_Dom_pvt_ocup',
         'v0007': 'Tot_Dom_pvt_ocup',
+        'v0008': 'Tot_Renda_Dom',
     }, 
     inplace=True
 )
@@ -936,6 +967,7 @@ DF_SETORES_GRP = DF_SETORES_BAIRROS.groupby(['BAIRRO']).agg({
   'Med_pess_dom_pvt_ocup': 'sum',
   'Perc_Dom_pvt_ocup': 'sum',
   'Tot_Dom_pvt_ocup': 'sum',
+  'Tot_Renda_Dom': 'sum',
 }).reset_index()
 
 DF_DATA = DF_AMV_FILTERED.copy()
@@ -1169,7 +1201,7 @@ COLS_VALUE_RADAR = [
     'Sat_Bairro', 'Sat_Saúde', 'Pratica_Atividade', 'Sat_Financeira', 'Sat_atv_comercial',
     'Sat_Qual_Ar', 'Sat_Ruído', 'Sat_Lazer', 'Sat_col_Lixo', 'Sat_dist_bus_stop',
     'Sat_qual_bus_stop', 'Sat_Acesso', 'Sent_Segurança', 'Sent_Conf_Pessoas', 'Sat_Trat_Esgoto',
-    'Tot_Pessoas', 'Tot_Domicílios', 'Tot_Domicílios_pvt', 'Tot_Domicílios_col', 'Med_pess_dom_pvt_ocup', 'Perc_Dom_pvt_ocup', 'Tot_Dom_pvt_ocup'
+    'Tot_Pessoas', 'Tot_Domicílios', 'Tot_Domicílios_pvt', 'Tot_Domicílios_col', 'Med_pess_dom_pvt_ocup', 'Perc_Dom_pvt_ocup', 'Tot_Dom_pvt_ocup', 'Tot_Renda_Dom',
 ]
 
 PROPS_GROUP_RADAR = 'BAIRRO'
@@ -1193,7 +1225,7 @@ DF_AMV_RADAR = DF_DATA[[
     'Sat_Bairro', 'Sat_Saúde', 'Pratica_Atividade', 'Sat_Financeira', 'Sat_atv_comercial',
     'Sat_Qual_Ar', 'Sat_Ruído', 'Sat_Lazer', 'Sat_col_Lixo', 'Sat_dist_bus_stop', 
     'Sat_qual_bus_stop', 'Sat_Acesso', 'Sent_Segurança', 'Sent_Conf_Pessoas', 'Sat_Trat_Esgoto', 
-    'Tot_Pessoas', 'Tot_Domicílios', 'Tot_Domicílios_pvt', 'Tot_Domicílios_col', 'Med_pess_dom_pvt_ocup', 'Perc_Dom_pvt_ocup', 'Tot_Dom_pvt_ocup'
+    'Tot_Pessoas', 'Tot_Domicílios', 'Tot_Domicílios_pvt', 'Tot_Domicílios_col', 'Med_pess_dom_pvt_ocup', 'Perc_Dom_pvt_ocup', 'Tot_Dom_pvt_ocup', 'Tot_Renda_Dom',
 ]]
 
 DF_AMV_RADAR.rename(
